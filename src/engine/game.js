@@ -295,6 +295,10 @@ export class Game {
     if (life.home && !life.home.fs && !huotou.some(h => /^(请人看宅|堪舆|看风水)/.test(h))) huotou.push('请人看宅');
     if ((['zhuji', 'jindan', 'yuanying', 'huashen', 'lianxu', 'heti', 'dasheng', 'dujie', 'zhenxian', 'jinxian', 'taiyi', 'daluo', 'daozun'].includes(life.realm)
       || (life.wudaoRank != null && life.wudaoRank <= 6)) && !huotou.some(h => /^寻龙|点穴/.test(h))) huotou.push('寻龙点穴');
+    // 二十四期夜巡修 I：寻静曝光——bot 常驻市镇做工，打坐 100% 被"此地嘈杂"挡回，
+    // xiwei 恒为 0，整条修仙阶梯（练气→筑基→金丹）连同寻龙门槛全部锁死。
+    // 连败两次后把"寻个清静处"挂进念头列表（成了功就撤，避免占屏）。
+    if ((life.flags.cultNoisyFail || 0) >= 2 && !huotou.some(h => /^寻个清静处|^寻清静/.test(h))) huotou.push('寻个清静处');
     // 二十四期夜巡修 E：悬案曝光——查案系统零门槛却零曝光，bot 八轮只摸到 2 次。
     // 还有未断的悬案时把"查案"挂进念头列表（案子断完就不出，避免诱人空点）。
     if (CASES.some(c => !((life.flags?.doneCases || []).includes(c.id))) && !huotou.some(h => /^(查案|断案|接案)/.test(h))) huotou.push('查案');
@@ -919,6 +923,7 @@ export class Game {
         case 'kanyu': return doKanyu(this);
         case 'zhenwu': return doZhenwu(this);
         case 'xunlong': return doXunlong(this);
+        case 'xunjing': return this.doSeekQuiet(); // 二十四期夜巡修 I：寻静行功
         case 'help': return this.doAskHeaven(); // 二十一期修 A：指路不牵手——askHeaven 此前是死代码
         case 'ponder': return this.doPonder(); // 二十一期修 C：琢磨心事
         default: return this.doEcho('generic', p);
@@ -1172,12 +1177,57 @@ export class Game {
     this.rollNodeEvents(node, 0.2);
   }
 
+  // 二十四期夜巡修 I：寻静——闹市行功不成，就真给一条去清静处的路。
+  // 就近先看同城相连节点，再看官道可达的城；到了之后径直寻到清静节点，不打断"去修行"这一口气。
+  doSeekQuiet() {
+    const life = this.state.life;
+    const isQuiet = n => n && (n.tags || []).some(t => ['wild', 'lingdi', 'taoist', 'temple'].includes(t));
+    const here = nodes[life.location.node];
+    if (isQuiet(here)) {
+      life.flags.cultNoisyFail = 0;
+      return this.say('此地本就清静。你寻了块平整石头坐下，呼吸渐渐沉了下去。', 'echo');
+    }
+    const near = (here.links || []).map(id => nodes[id]).filter(isQuiet);
+    if (near.length) {
+      this.say(`你离开喧处，往${near[0].name}去——那儿清静。`, 'scene');
+      life.flags.cultNoisyFail = 0;
+      this.enterNode(near[0].id);
+      return;
+    }
+    for (const destId of Object.keys(routes[life.location.city] || {})) {
+      const qnode = Object.values(nodes).find(n => n.city === destId && isQuiet(n));
+      if (!qnode) continue;
+      const city = cities[destId];
+      this.say(`此地四邻都是人烟。你想起${city.name}地界有处清静所在，收拾行装便动身。`, 'scene');
+      this.doTravel({}, `去${city.name}`);
+      if (!this.state.alive) return;
+      const arrived = nodes[life.location.node];
+      if (!isQuiet(arrived)) {
+        const q2 = (arrived.links || []).map(id => nodes[id]).filter(isQuiet)[0]
+          || Object.values(nodes).find(n => n.city === arrived.city && isQuiet(n));
+        if (q2) {
+          this.say(`到了。你不歇脚，径直往${q2.name}去——行功的事，不能再等。`, 'scene');
+          this.enterNode(q2.id);
+        }
+      }
+      life.flags.cultNoisyFail = 0;
+      return;
+    }
+    this.say('四下里都是人烟。你想：既入江湖，且在闹市里养着这口气——等路过山野古庙，再坐下来不迟。', 'echo');
+  }
+
   doCultivate() {
     const life = this.state.life;
     const node = nodes[life.location.node];
     const isLingdi = node.tags?.includes('lingdi');
     const quiet = node.tags?.includes('wild') || isLingdi || node.tags?.includes('taoist') || node.tags?.includes('temple');
-    if (!quiet && !isLingdi) return this.say(this.freshText('cult_no_' + node.id, ECHOES.cultivate_noCondition), 'echo');
+    if (!quiet && !isLingdi) {
+      // 二十四期夜巡修 I：失败计数——连败两次后曝光"寻个清静处"，给瞎摸的人一条明路
+      life.flags.cultNoisyFail = (life.flags.cultNoisyFail || 0) + 1;
+      const hint = life.flags.cultNoisyFail >= 2 ? '\n（心里记下了：得寻个清静处坐。）' : '';
+      return this.say(this.freshText('cult_no_' + node.id, ECHOES.cultivate_noCondition) + hint, 'echo');
+    }
+    life.flags.cultNoisyFail = 0;
     this.advanceTime(2);
     if (!this.state.alive) return;
     let gain = 2 + life.dims.gengu / 20 + (isLingdi ? 6 : 0) + (life.gongfa.some(g => g.level >= 2) ? 3 : 0);
