@@ -1522,7 +1522,18 @@ export class Game {
     if (life.money < price) return this.say(this.rng.pick(ECHOES.buy_noMoney), 'echo');
     life.money -= price;
     this.advanceTime(1);
-    this.say(`你置办了些用度——盘缠紧了些，但也踏实了。日子就是这样过出来的。\n` + timeTag(1), 'scene');
+    // 二十四期夜巡修 H：买有实物——置办此前只扣钱不出货，行囊永远是空的，
+    // 装备/服用系统零物料（八轮装备触达仅 4 次，全是空手回应）。市集置办得一件家常物件。
+    const WARES = [
+      { id: 'wpn_taomu', name: '桃木剑', kind: 'weapon', tier: 1, grade: '凡品', combat: 1, desc: '镇宅也防身，练武人最初的伙计。' },
+      { id: 'wpn_tiechi', name: '铁尺', kind: 'weapon', tier: 1, grade: '凡品', combat: 1, desc: '量过千百匹布的铁尺，趁手得很。' },
+      { id: 'tre_pingankou', name: '平安扣', kind: 'treasure', tier: 1, grade: '凡品', combat: 1, desc: '素面平安扣，贴身戴着，心里踏实。' },
+      { id: 'herb_jinchuang', name: '金疮药', kind: 'herb', herbEffect: 'heal', desc: '一瓶金疮药——江湖人的家常保命钱。' },
+    ];
+    const tpl = this.rng.pick(WARES);
+    const ware = { ...tpl, id: tpl.id + '_' + life.items.length };
+    life.items.push(ware);
+    this.say(`你置办了【${ware.name}】——${ware.desc}盘缠紧了些，手上却踏实了。日子就是这样过出来的。\n` + timeTag(1), 'scene');
   }
 
   doEat() {

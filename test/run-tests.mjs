@@ -2070,10 +2070,15 @@ await (async () => {
   const seg24c = g24c.journal.slice(base24c).map(x => x.text || '').join('\n');
   check('无市集处买→指路而非闭门羹', seg24c.includes('市集'), seg24c.slice(0, 60));
   g24c.state.life.location = { city: 'tianqi', node: 'dongshi' }; // market 节点
+  const itemsBefore24 = g24c.state.life.items.length;
   base24c = g24c.journal.length;
   g24c.input('置办用度');
   const seg24d = g24c.journal.slice(base24c).map(x => x.text || '').join('\n');
   check('市集上买→真置办', seg24d.includes('置办') && !seg24d.includes('没得卖'), seg24d.slice(0, 60));
+  // 二十四期夜巡修 H：买有实物——置办得一件可装备/可服用的家常物件
+  check('市集买→行囊得实物', g24c.state.life.items.length === itemsBefore24 + 1, `items=${g24c.state.life.items.length}/${itemsBefore24}`);
+  const ware24 = g24c.state.life.items[g24c.state.life.items.length - 1];
+  check('实物品类可装备或可服用', ['weapon', 'treasure', 'herb'].includes(ware24.kind), `${ware24.name}/${ware24.kind}`);
   const ht24c = g24c.currentScene().huatou;
   check('市集念头含置办用度', ht24c.includes('置办用度'), ht24c.slice(0, 4).join('/'));
   check('念头含生计三件套', ['做工挣钱', '清点行囊', '吃点东西'].every(h => ht24c.includes(h)), ht24c.join('/').slice(0, 60));

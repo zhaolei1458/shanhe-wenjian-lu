@@ -139,7 +139,10 @@ const HUATOU_LIMIT = 8;
 const huatouExpanded = ref(false);
 const isGoHuatou = (h) => /^去/.test(h);
 // 二十四期修 B：生计动词与出行同权——核心生活动作永不折叠（折叠区新手看不到就等于不存在）
-const isCoreHuatou = (h) => isGoHuatou(h) || /^(做工挣钱|清点行囊|吃点东西|置办用度)$/.test(h);
+// 二十四期夜巡修 G：曝光念头与生计同权——修C/D/E/F挂进去的拜师/功课/安家/盘业/看宅/
+// 寻龙/查案/佩戴此前排在折叠区队尾，「打坐/练武」永远先占名额（rest 队列按数组顺序截断），
+// 数据梯度证实：拜师(rest第3位)触达200，定居(第5位)24，装备(末位)仅4。曝光不被折叠才算曝光。
+const isCoreHuatou = (h) => isGoHuatou(h) || /^(做工挣钱|清点行囊|吃点东西|置办用度|拜师|师门功课|安家置业|盘下酒肆|请人看宅|寻龙点穴|查案|用起来)$/.test(h);
 const shownHuatou = computed(() => {
   const all = scene.value.huatou || [];
   const go = all.filter(isCoreHuatou);
