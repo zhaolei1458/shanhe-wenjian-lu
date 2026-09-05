@@ -284,6 +284,17 @@ export class Game {
     if (!huotou.some(h => /^(清点|物品|家当|行囊)/.test(h))) huotou.push('清点行囊');
     if (!huotou.some(h => /^(吃|喝|打酒|用饭)/.test(h))) huotou.push('吃点东西');
     if ((node.tags || []).some(t => t === 'market' || t === 'hub') && !huotou.some(h => /^(买|购|置办)/.test(h))) huotou.push('置办用度');
+    // 二十四期夜巡修 C：零触达系统曝光——门派职事/拜师/定居/商事/堪舆/寻龙 常年无人摸到，
+    // 按各自门槛条件挂进念头列表（不满足门槛就不出，避免诱人空点）
+    if (!life.sect && Object.values(SECTS).some(s => s.node === node.id) && !huotou.some(h => /^拜师/.test(h))) huotou.push('拜师');
+    if (life.sect && !huotou.some(h => /^(师门功课|领日常|当值)/.test(h))) huotou.push('师门功课');
+    if (!life.home && !huotou.some(h => /^(安家|置宅|赁屋)/.test(h))) huotou.push('安家置业');
+    // 二十四期夜巡修 D：盘业曝光放宽——全图只有 3 market+2 hub，bot 挣钱的活计都在
+    // docks/slum/village，原条件等于永远不出。改在"能做工"的同类节点曝光（钱够就见得到）。
+    if (!life.business && life.money >= 15 && (node.tags || []).some(t => ['market', 'hub', 'docks', 'slum', 'village'].includes(t)) && !huotou.some(h => /^盘下/.test(h))) huotou.push('盘下酒肆');
+    if (life.home && !life.home.fs && !huotou.some(h => /^(请人看宅|堪舆|看风水)/.test(h))) huotou.push('请人看宅');
+    if ((['zhuji', 'jindan', 'yuanying', 'huashen', 'lianxu', 'heti', 'dasheng', 'dujie', 'zhenxian', 'jinxian', 'taiyi', 'daluo', 'daozun'].includes(life.realm)
+      || (life.wudaoRank != null && life.wudaoRank <= 6)) && !huotou.some(h => /^寻龙|点穴/.test(h))) huotou.push('寻龙点穴');
     // NPC 话头
     for (const nid of node.npcs || []) {
       const n = npcs[nid];
