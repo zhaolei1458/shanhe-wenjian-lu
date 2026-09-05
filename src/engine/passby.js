@@ -6,16 +6,20 @@ import { PASSBY_EVENTS, pocketLineFor } from '../content/passby.js';
 
 // ---- B/C：路过事件（小惊喜 + 江湖主动上门）----
 // chance：动作附带的触发概率（打坐/练武 6%，闲逛 12%）
+// 二十三期修 F：保底——每步计数，十八步没遇上任何事件就强推一条（磨盘破除）
 export function maybePassBy(G, chance) {
   if (G.pending || G.state.afterlife || G.state.combat || !G.state.alive) return false;
-  if (!G.rng.chance(chance)) return false;
   const life = G.state.life;
   life.flags ||= {};
+  const since = (life.flags.stepsSinceEvent = (life.flags.stepsSinceEvent || 0) + 1);
+  const force = since >= 18;
+  if (!force && !G.rng.chance(chance)) return false;
   const seen = (life.flags.passbySeen ||= {});
-  const pool = PASSBY_EVENTS.filter(e => (seen[e.id] || 0) < 2);
+  const pool = PASSBY_EVENTS.filter(e => (seen[e.id] || 0) < 3);
   if (!pool.length) return false;
   const ev = G.rng.pick(pool);
   seen[ev.id] = (seen[ev.id] || 0) + 1;
+  life.flags.stepsSinceEvent = 0;
   G.fireEvent({ ...ev });
   return true;
 }

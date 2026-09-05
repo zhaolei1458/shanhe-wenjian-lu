@@ -134,15 +134,25 @@ const modeLabel = computed(() => ({
 const inCombat = computed(() => !!game.value.state?.combat);
 const sleeve = computed(() => game.value.getSleeve());
 
-// 二十一期修 E：话头折叠
+// 二十一期修 E：话头折叠；二十三期修 F：出行念头（去X）置顶且永不折叠——路必须首屏可见
 const HUATOU_LIMIT = 8;
 const huatouExpanded = ref(false);
+const isGoHuatou = (h) => /^去/.test(h);
 const shownHuatou = computed(() => {
   const all = scene.value.huatou || [];
-  if (huatouExpanded.value || all.length <= HUATOU_LIMIT) return all;
-  return all.slice(0, HUATOU_LIMIT);
+  const go = all.filter(isGoHuatou);
+  const rest = all.filter(h => !isGoHuatou(h));
+  if (huatouExpanded.value) return [...go, ...rest];
+  const restRoom = Math.max(0, HUATOU_LIMIT - go.length);
+  return [...go, ...rest.slice(0, restRoom)];
 });
-const huatouOverflow = computed(() => Math.max(0, (scene.value.huatou || []).length - HUATOU_LIMIT));
+const huatouOverflow = computed(() => {
+  const all = scene.value.huatou || [];
+  if (huatouExpanded.value) return 0;
+  const go = all.filter(isGoHuatou).length;
+  const rest = all.length - go;
+  return Math.max(0, rest - Math.max(0, HUATOU_LIMIT - go));
+});
 
 // 二十一期修 F：眼下栏数据（暗线 chip + 境界词，反数值——只给词不给数）
 const eye = computed(() => game.value.eyeNow?.() || {});

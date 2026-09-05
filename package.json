@@ -1,7 +1,7 @@
 {
   "name": "shanhe-wenjian-lu",
   "private": true,
-  "version": "22.0.0",
+  "version": "23.0.0",
   "type": "module",
   "description": "山河问剑录——纯文字武侠仙侠沙盒（v0.9 可玩闭环）",
   "scripts": {

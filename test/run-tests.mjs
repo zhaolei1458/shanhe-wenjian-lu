@@ -17,7 +17,7 @@ import { WORLD_EVENTS } from '../src/content/worldEvents.js';
 import { rollItem, equippedBonus, equipItem } from '../src/engine/equipment.js';
 import { makeRng } from '../src/engine/rng.js';
 import { maybePassBy, maybeGateway } from '../src/engine/passby.js'; // 二十二期
-import { GATEWAY_EVENTS } from '../src/content/passby.js'; // 二十二期
+import { GATEWAY_EVENTS, PASSBY_EVENTS } from '../src/content/passby.js'; // 二十二期/二十三期
 
 // 十五期：奇遇大池（adventures15~24）改动态加载——全量闸跑前必须灌满
 await loadBigPools();
@@ -1769,9 +1769,10 @@ await (async () => {
   g21.rebirth(Game.rollFateCards('gate21', meta21)[0], '闸行者', meta21, 'life-g21');
   const scene21 = g21.currentScene();
 
-  // 修 B：核心动词常驻且全部话头可解析（go/talk/ask 类需槽位，按需放宽）
+  // 修 B：核心动词常驻且全部话头可解析（二十三期起出行念头置顶，核心动词保持常驻）
   const ht = scene21.huatou;
-  check('核心动词常驻（打坐吐纳/练武在最前）', ht.slice(0, 2).includes('打坐吐纳') && ht.slice(0, 2).includes('练武'), ht.slice(0, 3).join('/'));
+  const hasGoHt = ht.some(h => /^去/.test(h));
+  check('核心动词常驻（且出行念头存在时置顶）', ht.includes('打坐吐纳') && ht.includes('练武') && (!hasGoHt || /^去/.test(ht[0])), ht.slice(0, 4).join('/'));
   const unparseable = ht.filter(h => {
     const r = parse(h, scene21, { nodes, npcs: {}, cities: {}, areas: {} });
     return r.verdict === 'miss';
@@ -1954,6 +1955,59 @@ await (async () => {
     }
   } catch (e) { chainErr = e.message; }
   check('宽解析口语 12 步链路零异常', !chainErr, chainErr || 'ok');
+})();
+
+// ================= 闸二十三：磨盘破除——出行置顶 / 搭话解析 / 诺言进度 / 事件保底 =================
+(function () {
+  console.log('\n—— 闸二十三：磨盘破除 ——');
+
+  // F：出行念头置顶（铁瓦关关墙戍楼：跨城「去昆吾」必须在第一屏可见）
+  const g23a = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsA = Game.rollFateCards('gate23a', g23a.meta);
+  g23a.rebirth(cardsA[0], '闸行者', g23a.meta, 'life-g23a');
+  g23a.state.life.location = { city: 'tiewa', node: 'tw_guanqiang' };
+  const ht23 = g23a.currentScene().huatou;
+  check('铁瓦关话头含去昆吾', ht23.some(h => /^去昆吾/.test(h)), ht23.slice(0, 3).join('/'));
+  check('出行念头置顶', /^去/.test(ht23[0]), ht23[0]);
+  check('铁瓦关首屏可见念头数含出行（≤8 时全见）', ht23.filter(h => /^去/.test(h)).length > 0, 'ok');
+
+  // F：搭话解析（此前「跟路过的人搭句话」verdict miss）
+  const r23b = parse('跟路过的人搭句话', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} });
+  check('搭句话解析为 talk', r23b.intent === 'talk' && r23b.verdict !== 'miss', `${r23b.verdict}/${r23b.intent}`);
+  const r23c = parse('搭句话', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} });
+  check('单说「搭句话」也落到 talk', r23c.intent === 'talk', `${r23c.verdict}/${r23c.intent}`);
+
+  // F：诺言可问进度——ledger 未结之诺含 NPC 名，doTalk 给进度回应
+  const g23d = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsD = Game.rollFateCards('gate23d', g23d.meta);
+  g23d.rebirth(cardsD[0], '诺行者', g23d.meta, 'life-g23d');
+  g23d.state.life.location = { city: 'tiewa', node: 'tw_guanqiang' };
+  g23d.state.ledger.push({ type: '诺', text: '应下戍将：白灾之日守铁瓦关', resolved: false });
+  const jn23 = g23d.journal.length;
+  let nuoLine = false;
+  for (let i = 0; i < 6 && !nuoLine; i++) { // NPC 随机选中——多次对话必撞上戍将
+    g23d.doTalk({ npc: null, topic: '' }, '和戍将聊');
+    nuoLine = g23d.journal.slice(jn23).some(x => (x.text || '').includes('此诺未结'));
+  }
+  check('与诺相关的 NPC 对话带进度回应', nuoLine, 'ok');
+
+  // F：路过事件保底——十八步无事件则强推
+  const g23e = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsE = Game.rollFateCards('gate23e', g23e.meta);
+  g23e.rebirth(cardsE[0], '保底行者', g23e.meta, 'life-g23e');
+  if (g23e.pending) g23e.closePending();
+  g23e.state.life.flags.stepsSinceEvent = 17;
+  let forced = false;
+  for (let i = 0; i < 5 && !forced; i++) {
+    if (g23e.pending) g23e.closePending();
+    forced = maybePassBy(g23e, 0); // 0 概率——只剩保底通道
+  }
+  check('十八步保底强推路过事件', forced || Object.keys(g23e.state.life.flags.passbySeen || {}).length > 0, 'ok');
+
+  // F：边地事件池（换防/商队/烽火/马市/流民）
+  check('路过事件池 ≥ 15 条（含边地五条）', PASSBY_EVENTS.length >= 15, String(PASSBY_EVENTS.length));
+  const frontierIds = ['pb_huanfang', 'pb_shangdui', 'pb_fenghuo', 'pb_mashi', 'pb_liumin'];
+  check('边地五事件齐备', frontierIds.every(id => PASSBY_EVENTS.some(e => e.id === id)), 'ok');
 })();
 
 console.log(`\n${'='.repeat(40)}`);

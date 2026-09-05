@@ -285,6 +285,8 @@ export class Game {
     for (const dest of Object.keys(routes[node.city] || {})) {
       huotou.push(`去${cities[dest].name}`);
     }
+    // 二十三期修 F：出行念头置顶——出行的路必须首屏可见，不能排在折叠区尾部
+    huotou.sort((a, b) => (/^去/.test(b) ? 1 : 0) - (/^去/.test(a) ? 1 : 0));
     return huotou;
   }
 
@@ -1096,6 +1098,18 @@ export class Game {
       return this.startAdventure('adv_guishi_jiankui');
     }
     this.say(`${npc.greeting}`, 'dialog');
+    // 二十三期修 F：诺言可问进度——在场 NPC 与未结之诺相关时，给进度回应（不空转台词）
+    const ledNuo = (this.state.ledger || []).filter(l => !l.resolved && (l.type === '诺' || l.type === '誓'));
+    const nuo = ledNuo.find(l => (l.text || '').includes(npc.name));
+    if (nuo) {
+      nuo.talks = (nuo.talks || 0) + 1;
+      const nuoSays = [
+        `「${nuo.text.replace(/^[^：]*：/, '')}——这事我记着，你放心。」`,
+        `「还不到时候。时节一到，自有信来唤你。」`,
+        `「干等不是法子——出门备些御寒过活物什，到时候才不慌。」`,
+      ];
+      this.say(`${npc.name}（记起你们之间的约定）：${nuoSays[Math.min(nuo.talks - 1, 2)]}（旧账册·此诺未结）`, 'dialog');
+    }
     npcLifeCard(this, npc); // 十七期：私人史卡（首见必出）
     npcMemoryEcho(this, npc); // 十七期：账册记忆——他记得你的旧账
     // 说书人：秘闻卷 + 跨世说前尘（06 册 F：下一世在茶楼听到上一世的故事）
