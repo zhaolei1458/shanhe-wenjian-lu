@@ -36,6 +36,9 @@ Object.assign(EVENTS, EVENTS6);
 import '../content/sectEvents.js'; // 门派考验 + 江湖大事切片（Object.assign 进 EVENTS）
 import '../content/sects2Events.js'; // 四期：新十一派拜师考验
 import '../content/sects3Events.js'; // 六期：新十四派拜师考验
+import { GATEWAY_EVENTS } from '../content/passby.js'; // 二十二期 E-1：出村引力事件
+Object.assign(EVENTS, GATEWAY_EVENTS); // 并入总表：村野日常也可提前滚出引力事件
+import { maybePassBy, maybePocketGuide, maybeGateway, timeTag } from './passby.js'; // 二十二期：路过事件/内容出口/时间标价
 import { ADVENTURES } from '../content/adventures.js';
 import '../content/adventures2.js'; // v1.0 奇遇扩桩（Object.assign 进 ADVENTURES）
 import '../content/adventures3.js'; // 三/四期奇遇扩桩
@@ -246,7 +249,7 @@ export class Game {
     const timeOfDay = ['清晨', '晌午', '日暮', '深夜'][life.dayPart || 0];
     let text = '';
     if (opts.firstScene) {
-      text += `大衍承平${30 - this.state.world.year}年，${season}，${weather}。\n`;
+      text += `大衍承平${30 + this.state.world.year}年，${season}，${weather}。\n`;
     }
     text += `【${node.name}】${['晨', '午', '暮', '夜'][life.dayPart || 0]}·${season}${weather ? '·' + weather : ''}\n`;
     text += node.desc;
@@ -278,11 +281,9 @@ export class Game {
       const n = npcs[nid];
       if (n && !this.state.world.deadNpcs.includes(nid)) huotou.push(`和${n.name}聊`, `问${n.name}些事`);
     }
-    // 城市出口
-    if (node.city !== 'xiangye') {
-      for (const dest of Object.keys(routes[node.city] || {})) {
-        huotou.push(`去${cities[dest].name}`);
-      }
+    // 出城去处（二十二期修 A：村野也给——出行的路必须可见，新手才有"抬腿走天下"的选项）
+    for (const dest of Object.keys(routes[node.city] || {})) {
+      huotou.push(`去${cities[dest].name}`);
     }
     return huotou;
   }
@@ -296,7 +297,7 @@ export class Game {
       links: (node.links || []).map(id => nodes[id]).filter(Boolean),
       huatou: this.sceneHuotou(node),
       text: this.sceneText(node),
-      time: `大衍承平${30 - this.state.world.year}年 · ${SEASONS[life.season]} · ${life.age}岁`,
+      time: `大衍承平${30 + this.state.world.year}年 · ${SEASONS[life.season]} · ${life.age}岁`,
     };
   }
 
@@ -304,6 +305,24 @@ export class Game {
     this.journal.push({ text, kind, t: this.journal.length });
     if (this.journal.length > 400) this.journal.splice(0, 100);
     if (this.onChange) this.onChange();
+  }
+
+  // ---------- 二十二期修 B：一世内复读熔断 ----------
+  // 同 key 的句池里挑"这世说过次数最少"的句子——同一句话一世最多连出两次
+  freshText(key, pool) {
+    const life = this.state.life;
+    life.flags ||= {};
+    const memo = (life.flags.echoMemo ||= {});
+    const m = (memo[key] ||= {});
+    let bestN = Infinity, tie = [];
+    for (const t of pool) {
+      const n = m[t] || 0;
+      if (n < bestN) { bestN = n; tie = [t]; }
+      else if (n === bestN) tie.push(t);
+    }
+    const text = this.rng.pick(tie);
+    m[text] = (m[text] || 0) + 1;
+    return text;
   }
 
   // ---------- 进入节点 ----------
@@ -316,6 +335,8 @@ export class Game {
     this.state.sleeve.places.push(`${cities[node.city].name}·${areas[node.area].name}·${node.name}`);
     if (this.state.sleeve.places.length > 60) this.state.sleeve.places.shift();
     this.say(this.sceneText(node, opts), 'scene');
+    // 二十二期 E-2：初到一地，把"此地可为之事"说给玩家（每地一世只说一次）
+    maybePocketGuide(this, node);
     // 题壁留世（06 册 C）：数十年前的墨迹还在墙上
     const oldPoem = (this.state.world.wallPoems || []).find(p => p.node === nodeId && this.state.world.year - p.year >= 25);
     if (oldPoem) {
@@ -468,6 +489,13 @@ export class Game {
   advanceTime(parts) {
     const life = this.state.life;
     life.dayPart = (life.dayPart || 0) + parts;
+    // 二十二期 E-3：袖中录亮相——开卷两日光景，三卷册子自己"翻"出来
+    life.flags ||= {};
+    life.flags.partsLived = (life.flags.partsLived || 0) + parts;
+    if (!life.flags.sleeveShown && life.flags.partsLived >= 6) {
+      life.flags.sleeveShown = true;
+      this.say('（夜里你翻检随身的东西——三卷薄册不知何时塞进了包袱：行路志、人物谱、旧账册。你把它们压在枕下。走过的人、遇过的事，册子替你记着。）', 'system');
+    }
     while (life.dayPart >= 4) {
       life.dayPart -= 4;
       life.day++;
@@ -503,6 +531,9 @@ export class Game {
     const world = this.state.world;
     world.year++;
     life.age++;
+    // 二十二期 E-1：出村保底——十八岁还没出过本城，江湖亲自上门
+    if (!this.state.afterlife && !this.pending) maybeGateway(this, GATEWAY_EVENTS, EVENTS);
+    if (!this.state.alive) return;
     // 寿元初始化（首次进入延寿境界时重算）
     if (!life.lifespanMax) life.lifespanMax = lifespanFor(life.realm, this.rng);
     // 衰老征兆（最后一成）
@@ -865,10 +896,11 @@ export class Game {
         // go 的去处是城市名（跨城行路）——三期起共 20 城
         const dest = Object.values(cities).find(c => p.normalized.includes(c.name) || p.normalized.includes(c.name.replace(/[府镇关集]$/, '')));
         if (dest) return this.doTravel(p.slots, p.normalized);
-        return this.say(this.rng.pick(ECHOES.go_noPlace), 'echo');
+        return this.say(this.routeGuidance(), 'echo');
       }
-      if (p.intent === 'buy') return this.say(this.rng.pick(ECHOES.buy_noMoney), 'echo');
-      if (p.intent === 'talk' || p.intent === 'ask') return this.say(this.rng.pick(ECHOES.talk_noNpc), 'echo');
+      if (p.intent === 'buy') return this.say(this.freshText('buy_noMoney', ECHOES.buy_noMoney), 'echo');
+      // 二十二期修 A：想搭话就真搭——把话递给在场的活人，而不是直接吃闭门羹
+      if (p.intent === 'talk' || p.intent === 'ask') return this.doTalk(p.slots, p.normalized);
       return this.doEcho('generic', p);
     } else {
       // 冷场红线：任何输入必有回声
@@ -879,7 +911,7 @@ export class Game {
   doEcho(kind, p) {
     const node = nodes[this.state.life.location.node];
     const sense = this.rng.pick(['风把街声送过来，又送走了。', '檐下的旗子懒懒动了一下。', '不知谁家的炊烟被风压得很低。', '远处有骡铃，近处有算盘。']);
-    const tpl = this.rng.pick(ECHOES[kind] || ECHOES.generic);
+    const tpl = this.freshText('echo_' + kind, ECHOES[kind] || ECHOES.generic);
     let text = tpl
       .replace('{place}', node.name)
       .replace('{sense}', sense)
@@ -897,12 +929,34 @@ export class Game {
     this.advanceTime(1);
   }
 
+  // ---------- 二十二期修 A：路网可见——拒绝必须带路 ----------
+  routesOfHere() {
+    const life = this.state.life;
+    const node = nodes[life.location.node];
+    const near = (node.links || []).map(id => nodes[id]?.name).filter(Boolean);
+    const far = [];
+    for (const [destId, route] of Object.entries(routes[life.location.city] || {})) {
+      far.push(`${cities[destId]?.name || destId}（${route.days}日程）`);
+    }
+    return { near, far };
+  }
+
+  routeGuidance() {
+    const { near, far } = this.routesOfHere();
+    let text = '你要去的方向，脚下的路到不了。';
+    if (near.length) text += `此地可去：${near.join('、')}。`;
+    if (far.length) text += `出城赶路可往：${far.join('、')}——说一声「去${far[0].replace(/（.*/, '')}」就行。`;
+    else if (near.length) text += '跨城的官道不在此地——先走到有市镇码头的地方，再作打算。';
+    else text += '此地可去的方向得靠脚走出来——先到有官道码头的地方，再作打算。';
+    return text;
+  }
+
   doGo(slots, norm) {
     const target = slots.place;
     if (!target) {
       // 城市级去向（跨城行路）
       if (norm) return this.doTravel(slots, norm);
-      return this.doEcho('go_noPlace');
+      return this.say(this.routeGuidance(), 'echo');
     }
     if (target.city === this.state.life.location.city) {
       // 同城移动
@@ -929,7 +983,7 @@ export class Game {
       if (/赶路|行路|启程|动身|出发|官道/.test(norm || '')) {
         return this.say('要赶路，先报个去处——这世上的路再多，也得有条方向。', 'echo');
       }
-      return this.say('那条路眼下走不通——你得先到能出发的地方，或者换个去处。', 'echo');
+      return this.say(this.routeGuidance(), 'echo');
     }
     const route = routes[life.location.city][dest.id];
     // 下潜：需闭气之能（闭气术功法/鲛人泪/水行坐骑任一）
@@ -996,6 +1050,12 @@ export class Game {
       life.flags.visitedCities.push(dest.id);
       this.state.sleeve.shanhe.push(`初至${dest.name}——${dest.desc ? String(dest.desc).slice(0, 40) : '此城光景，已入卷中。'}`);
     }
+    // 二十二期 E-4：一世保底里程碑——头一回出远门，记进行迹
+    if (!life.flags.firstTravelDone) {
+      life.flags.firstTravelDone = true;
+      this.say('（这是你头一回真正离开家。身后的炊烟看不见了，前面的路看不见头——江湖，从这一步开始。）', 'system');
+      this.book('行迹', `头一回出远门，到了${dest.name}`);
+    }
     this.say(this.sceneText(nodes[entryNode], { firstScene: false }), 'scene');
     this.rollNodeEvents(nodes[entryNode], 0.5);
     this.checkAdventures(nodes[entryNode]);
@@ -1024,7 +1084,7 @@ export class Game {
       const ids = node.npcs || [];
       if (ids.length) npc = npcs[ids[this.rng.int(0, ids.length - 1)]];
     }
-    if (!npc || this.state.world.deadNpcs.includes(npc.id)) return this.say(this.rng.pick(ECHOES.talk_noNpc), 'echo');
+    if (!npc || this.state.world.deadNpcs.includes(npc.id)) return this.say(this.freshText('talk_noNpc', ECHOES.talk_noNpc), 'echo');
     // 人物谱
     if (!this.state.sleeve.people[npc.id]) {
       this.state.sleeve.people[npc.id] = { name: npc.name, desc: npc.desc };
@@ -1061,7 +1121,7 @@ export class Game {
         }
       }
     } else {
-      this.say(`${npc.name}道：${this.rng.pick(['"这话，得问对的人。"', '"你现在问的这个，我可说不上。"', '"先坐。急什么。"（他岔开了话头。）', '"……你心里其实已经有数了，对吧？"'])}`, 'dialog');
+      this.say(`${npc.name}道：${this.freshText('talk_miss_' + npc.id, ['"这话，得问对的人。"', '"你现在问的这个，我可说不上。"', '"先坐。急什么。"（他岔开了话头。）', '"……你心里其实已经有数了，对吧？"'])}`, 'dialog');
     }
     this.advanceTime(1);
     this.rollNodeEvents(node, 0.2);
@@ -1072,7 +1132,7 @@ export class Game {
     const node = nodes[life.location.node];
     const isLingdi = node.tags?.includes('lingdi');
     const quiet = node.tags?.includes('wild') || isLingdi || node.tags?.includes('taoist') || node.tags?.includes('temple');
-    if (!quiet && !isLingdi) return this.say(this.rng.pick(ECHOES.cultivate_noCondition), 'echo');
+    if (!quiet && !isLingdi) return this.say(this.freshText('cult_no_' + node.id, ECHOES.cultivate_noCondition), 'echo');
     this.advanceTime(2);
     if (!this.state.alive) return;
     let gain = 2 + life.dims.gengu / 20 + (isLingdi ? 6 : 0) + (life.gongfa.some(g => g.level >= 2) ? 3 : 0);
@@ -1115,14 +1175,21 @@ export class Game {
         return this.startAdventure('adv_shanbi_chuan');
       }
     }
-    this.say(this.rng.pick([
+    // 二十二期修 B：状态驱动文案池——按时辰/天象给不同的行功光景
+    const dpC = life.dayPart || 0;
+    const cultPool = [
       `你盘膝行功，呼吸渐深。体内那缕若有若无的气，比昨日听得清楚了一分。`,
       `子时的露气从窗纸缝里渗进来，你行功一周天，浑身微微见汗——这汗是"气"化开的。`,
       `你入静了半个时辰。出静时，听觉比来时锋利——你能听见自己心跳的间隙。`,
       isLingdi ? '此地气机浑厚，你刚一入静，周身的气就像百川归海一样聚拢过来——灵地打坐，一日抵得别处十日。' : '行功毕。气感涨了一线，说不清，但确凿。',
-    ]), 'scene');
-    // 破境判定
-    if (sizheng) this.say('（此刻正当四正时——子午卯酉，天地气机最顺。你借这个时辰行功，事半功倍。）', 'ambient');
+      dpC === 0 ? '晨光初透，万物气机升发。你借这一缕生氧行功，事半功倍。' : null,
+      dpC === 3 ? '夜深人静，天地都睡了。此刻行功，连风都替你放轻了脚步。' : null,
+      life.weather?.includes('雨') ? '檐外雨声连绵，你以雨声为引入定——嘈杂反而成了大道的节拍。' : null,
+      life.realm !== 'fan' ? '气海里的那口"井"又深了一寸。你能感觉到它的水位，在缓缓地涨。' : null,
+    ].filter(Boolean);
+    this.say(this.freshText('cultivate_' + node.id, cultPool) + '\n' + timeTag(2), 'scene');
+    // 二十二期 B：小惊喜——行功偶有异动，江湖也可能路过
+    if (!maybePassBy(this, 0.06) && sizheng) this.say('（此刻正当四正时——子午卯酉，天地气机最顺。你借这个时辰行功，事半功倍。）', 'ambient');
     if (moonYao) this.say('（今夜月圆。你体内的妖气如鱼得水，行功一周天，比平日快了三分——月圆之夜妖不修行？那是人说的。）', 'ambient');
     this.checkBreakthrough();
     this.rollNodeEvents(node, 0.15);
@@ -1306,11 +1373,20 @@ export class Game {
       life.hp = Math.max(1, life.hp - 4);
     }
     life.wugongXiuwei += Math.round(gain);
-    this.say(this.rng.pick([
+    // 二十二期修 B：状态驱动文案池——按时辰/伤势/武学给不同的练功光景
+    const dpP = life.dayPart || 0;
+    const pracPool = [
       '你练了一趟功夫。拳脚生风，收势时呼吸绵长——有进步，虽然看不见，但腿肚子知道。',
       '你把会的招式从头走了一遍。慢的是根基，快的是招——今日练的是慢的那部分。',
       '练完收功，你在原地站了一会儿，听自己的喘息平下去。这声音，一年比一年稳。',
-    ]), 'scene');
+      hasWugong ? '你练的是正经武学，一招一式都有出处。收势时招式自己"归了位"——这就是熟。' : null,
+      dpP === 0 ? '清晨练拳，露水打湿了鞋。这个时辰的筋骨最听话，压腿都比平日低三寸。' : null,
+      dpP === 3 ? '夜里你摸黑练了一套。看不见，反而全凭身子记——老话说，黑里练出的功夫才是自己的。' : null,
+      life.injury && Object.keys(life.injury).length ? '带着伤练，你只走了慢架子。疼的地方你都绕着走——绕着绕着，倒练出几分巧劲。' : null,
+    ].filter(Boolean);
+    this.say(this.freshText('practice_' + life.location.node, pracPool) + '\n' + timeTag(1), 'scene');
+    // 二十二期 B：小惊喜——练武偶有江湖路过
+    maybePassBy(this, 0.06);
     // 武道品级推进（GDD §6.1：后天九品→先天→宗师→大宗师→破碎虚空）
     this.checkWudaoRank();
   }
@@ -1357,11 +1433,11 @@ export class Game {
       for (const k of Object.keys(life.injury)) { life.injury[k]--; if (life.injury[k] <= 0) delete life.injury[k]; }
       if (!Object.keys(life.injury).length) life.injury = null;
     }
-    this.say(this.rng.pick([
+    this.say(this.freshText('rest_' + life.location.node, [
       '你睡了一个踏实觉。醒来时窗纸发白，昨日的疲惫像潮水退去。',
       '你将养了一日。伤处还钝钝地疼，但疼得有规律了——那是在好。',
       '一夜无梦。醒来时你听见自己在打坐前听不见的声音：鸟叫，和自己的气血。',
-    ]), 'scene');
+    ]) + '\n' + timeTag(4), 'scene');
   }
 
   doWork() {
@@ -1375,7 +1451,7 @@ export class Game {
       const job = JOBS10[jobId];
       this.applyEffect(job.effect, 'job');
       if (!this.state.alive) return;
-      this.say(this.rng.pick(job.flavor), 'scene');
+      this.say(this.freshText('job_' + jobId, job.flavor) + '\n' + timeTag(2), 'scene');
       if (!life.jobs?.includes(jobId)) {
         life.jobs = life.jobs || [];
         life.jobs.push(jobId);
@@ -1383,7 +1459,7 @@ export class Game {
       }
     } else if (node.tags?.includes('docks') || node.tags?.includes('market') || node.tags?.includes('slum') || node.tags?.includes('village')) {
       life.money += 2;
-      this.say('你寻了半日的活计。汗流进眼睛里，手上的茧又厚了一层——赚了两吊钱，晚饭有了着落。', 'scene');
+      this.say('你寻了半日的活计。汗流进眼睛里，手上的茧又厚了一层——赚了两吊钱，晚饭有了着落。\n' + timeTag(2), 'scene');
     } else {
       this.say('此地没有合适的活计。你转了一圈，又转回来。', 'echo');
       return;
@@ -1401,7 +1477,7 @@ export class Game {
     if (life.money < price) return this.say(this.rng.pick(ECHOES.buy_noMoney), 'echo');
     life.money -= price;
     this.advanceTime(1);
-    this.say(`你置办了些用度——盘缠紧了些，但也踏实了。日子就是这样过出来的。`, 'scene');
+    this.say(`你置办了些用度——盘缠紧了些，但也踏实了。日子就是这样过出来的。\n` + timeTag(1), 'scene');
   }
 
   doEat() {
@@ -1409,18 +1485,20 @@ export class Game {
     if (life.money < 1) return this.say(this.rng.pick(ECHOES.eat_noMoney), 'echo');
     life.money -= 1;
     this.advanceTime(1);
-    this.say('你寻了个摊子坐下。热汤面下肚，从喉咙一路暖到胃里——紧要关头的一碗热汤面，顶得上半部功法。', 'scene');
+    this.say('你寻了个摊子坐下。热汤面下肚，从喉咙一路暖到胃里——紧要关头的一碗热汤面，顶得上半部功法。\n' + timeTag(1), 'scene');
   }
 
   doWander() {
     const node = nodes[this.state.life.location.node];
     this.advanceTime(1);
     if (!this.state.alive) return;
-    this.say(this.rng.pick([
+    this.say(this.freshText('wander_' + node.id, [
       '你信步走了一段。不为什么，就是走走——江湖里的人，闲下来的时候反而最像个人。',
       '你把这条街慢慢走了一遍。铺子的招牌、人的脸色、地上的车辙——都看在眼里，收进心里。',
       '你消磨了半日。日子有时候就该这么浪费——浪费得起，才是活得好。',
-    ]), 'scene');
+    ]) + '\n' + timeTag(1), 'scene');
+    // 二十二期 B/C：闲逛是偶遇的高发地
+    maybePassBy(this, 0.12);
     this.rollNodeEvents(node, 0.35);
   }
 
@@ -1817,7 +1895,18 @@ export class Game {
     const a = this.askHeaven();
     const hl = HIDDEN_LINES[life.flags.hiddenLine];
     const xinshi = (hl && !(life.flags.doneEvents || []).includes(hl.hook)) ? `\n心里搁着一桩事：${hl.title}。` : '';
-    this.say(`【问天】\n${a.jingdi}${xinshi}\n${a.kewei}\n${a.xiuxing}\n${a.guangyin}\n（路要自己走，天只指个方向。）`, 'system');
+    // 二十二期修 A：路况——眼下能去哪儿，永远写在明面上
+    const { near, far } = this.routesOfHere();
+    const luxu = '\n出得此地：' + (near.length ? near.join('、') : '（就在原地四下看看）')
+      + '\n跨城行路：' + (far.length ? far.join('、') : '（此地无官道直达——先走到市镇码头）');
+    // 二十二期 E-3：袖中录亮相——核心 UI 被动曝光一次
+    life.flags.sleeveDebut ||= false;
+    let debut = '';
+    if (!life.flags.sleeveMentioned) {
+      life.flags.sleeveMentioned = true;
+      debut = '\n（你袖中藏着三卷册子——行路志、人物谱、旧账册，都收在「袖中录」里。走过的人、遇过的事，册子替你记着。）';
+    }
+    this.say(`【问天】\n${a.jingdi}${xinshi}\n${a.kewei}${luxu}\n${a.xiuxing}\n${a.guangyin}${debut}\n（路要自己走，天只指个方向。）`, 'system');
   }
 
   // ---------- 二十一期修 F：眼下栏数据源（UI 单一取数口） ----------
@@ -1843,7 +1932,17 @@ export class Game {
     }
     const ev = EVENTS[hl.hook];
     const nodeName = ev?.nodes?.length ? nodes[ev.nodes[0]]?.name : null;
-    this.say(`（心里搁着的事——【${hl.title}】${hl.hint}${nodeName ? `\n你琢磨了半天，觉得这事得到${nodeName}走一趟才有下文。` : ''}）`, 'system');
+    // 二十二期修 D-2：已琢磨过——差异化回应，不再原句复读
+    life.flags.pondered ||= {};
+    const times = (life.flags.pondered[hl.id] || 0) + 1;
+    life.flags.pondered[hl.id] = times;
+    if (times === 1) {
+      this.say(`（心里搁着的事——【${hl.title}】${hl.hint}${nodeName ? `\n你琢磨了半天，觉得这事得到${nodeName}走一趟才有下文。` : ''}）`, 'system');
+    } else if (nodeName) {
+      this.say(`（${hl.title}——这事你已经琢磨过${times}遍了，再想也不会多出一条路。线索还指着${nodeName}。${(nodes[life.location.node].links || []).some(id => nodes[id]?.name === nodeName) ? '抬腿就到——「去' + nodeName + '」。' : '先看看眼下能去哪儿。'}）`, 'system');
+    } else {
+      this.say(`（${hl.title}——这事你已想过多遍，念头磨平了，还是得靠腿。出门走走，兴许路自己冒出来。）`, 'system');
+    }
     this.advanceTime(1);
   }
 }

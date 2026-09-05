@@ -4,7 +4,7 @@
 // ============================================================
 
 import { parse, normalize } from '../src/engine/parser.js';
-import { nodes, npcs, cities } from '../src/content/world.js';
+import { nodes, npcs, cities, routes } from '../src/content/world.js';
 import { EVENTS } from '../src/content/events.js';
 import { ADVENTURES } from '../src/content/adventures.js';
 import { ORIGINS, VARIANTS, HIDDEN_LINES, LIFE_NODES } from '../src/content/fates.js';
@@ -16,6 +16,8 @@ import { SECTS } from '../src/content/sects.js';
 import { WORLD_EVENTS } from '../src/content/worldEvents.js';
 import { rollItem, equippedBonus, equipItem } from '../src/engine/equipment.js';
 import { makeRng } from '../src/engine/rng.js';
+import { maybePassBy, maybeGateway } from '../src/engine/passby.js'; // 二十二期
+import { GATEWAY_EVENTS } from '../src/content/passby.js'; // 二十二期
 
 // 十五期：奇遇大池（adventures15~24）改动态加载——全量闸跑前必须灌满
 await loadBigPools();
@@ -1822,6 +1824,136 @@ await (async () => {
     for (let i = 0; i < 10; i++) { if (g21.pending) g21.closePending(); g21.input(scene21.huatou[i % scene21.huatou.length]); }
   } catch (e) { err21 = e.message; }
   check('新角色 10 步全话头点击零异常', !err21, err21 || 'ok');
+})();
+
+// ================= 闸二十二：盲玩复盘五向落地（docs/设计-盲玩体验复盘与优化方向.md） =================
+(function () {
+  console.log('\n—— 闸二十二：盲玩复盘五向落地 ——');
+
+  // D-1：纪年只进不退（倒流公式 30-year 的回归闸）
+  const g22a = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsA = Game.rollFateCards('era-test', g22a.meta);
+  g22a.rebirth(cardsA[0], '纪年', g22a.meta, 'life-era');
+  const years = [];
+  for (let i = 0; i < 8; i++) {
+    g22a.state.world.year = i;
+    const m = g22a.currentScene().time.match(/承平(\d+)年/);
+    if (m) years.push(Number(m[1]));
+  }
+  check('纪年随世界推进只增不减', years.length >= 6 && years.every((y, i) => i === 0 || y > years[i - 1]), years.join(','));
+
+  // A：宽解析——玩家口语不再坠入通用回声
+  const pA = parse('四处走走', { npcs: [], links: [] }, WD);
+  check('「四处走走」→闲逛', pA.verdict === 'hit' && pA.intent === 'wander', `${pA.verdict}/${pA.intent}`);
+  const pB = parse('出门转转', { npcs: [], links: [] }, WD);
+  check('「出门转转」→闲逛（不被「出」劫走）', pB.verdict === 'hit' && pB.intent === 'wander', `${pB.verdict}/${pB.intent}`);
+  const pC = parse('找个地方歇歇脚', { npcs: [], links: [] }, WD);
+  check('「找个地方歇歇脚」→休息（不被「找」劫走）', pC.verdict === 'hit' && pC.intent === 'rest', `${pC.verdict}/${pC.intent}`);
+
+  // A：拒绝必带路 + 问天附路况
+  const g22b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsB = Game.rollFateCards('route-test', g22b.meta);
+  g22b.rebirth(cardsB[0], '问路人', g22b.meta, 'life-route');
+  const jnR = g22b.journal.length;
+  g22b.input('去昆仑墟');
+  const gText = g22b.journal.slice(jnR).map(j => j.text || '').join('\n');
+  check('去不了的地方给路线指引（可去/可往清单）', gText.includes('可去') || gText.includes('可往'), gText.slice(0, 80));
+  const jnQ = g22b.journal.length;
+  g22b.doAskHeaven();
+  const qText = g22b.journal.slice(jnQ).map(j => j.text || '').join('\n');
+  check('问天附路况两段（出得此地/跨城行路）', qText.includes('出得此地') && qText.includes('跨城行路'), 'route ok');
+  check('问天首次提袖中录（E-3 被动曝光）', qText.includes('袖中录'), 'sleeve debut ok');
+  const hu22 = g22b.currentScene().huatou;
+  check('村野话头含跨城去处（出行可见）', hu22.some(h => /^去/.test(h)), hu22.filter(h => h.startsWith('去')).slice(0, 3).join('|'));
+
+  // D-2：时间标价 + 琢磨记忆（打坐须在野外清净处）
+  const gClear = (g) => { for (let i = 0; i < 6 && g.pending; i++) g.closePending(); g.pending = null; };
+  gClear(g22b);
+  g22b.enterNode('shanlu');
+  gClear(g22b);
+  const jnCu = g22b.journal.length;
+  g22b.doCultivate();
+  gClear(g22b);
+  check('打坐回应带时间标价', g22b.journal.slice(jnCu).some(x => (x.text || '').includes('耗了')), 'tag ok');
+  const jnPn = g22b.journal.length;
+  g22b.doPonder();
+  if (g22b.pending) g22b.closePending();
+  g22b.doPonder();
+  if (g22b.pending) g22b.closePending();
+  const pText = g22b.journal.slice(jnPn).map(j => j.text || '').join('\n');
+  check('二次琢磨给差异化回应（已琢磨过N遍）', pText.includes('琢磨过'), 'ponder ok');
+
+  // B：复读熔断——练武六次，同句不超过两次
+  const seen22 = [];
+  for (let i = 0; i < 6; i++) {
+    const j = g22b.journal.length;
+    g22b.doPractice();
+    if (g22b.pending) g22b.closePending();
+    seen22.push((g22b.journal[j]?.text || '').split('\n')[0]);
+  }
+  const counts = {};
+  for (const t of seen22) counts[t] = (counts[t] || 0) + 1;
+  check('练武六次无一句超过两次（freshText 熔断）', Object.values(counts).every(n => n <= 2), JSON.stringify(counts).slice(0, 90));
+
+  // C：路过事件可触发 + 挂起选项
+  const g22c = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsC = Game.rollFateCards('passby', g22c.meta);
+  g22c.rebirth(cardsC[0], '路人', g22c.meta, 'life-pb');
+  gClear(g22c);
+  const pbOk = maybePassBy(g22c, 1);
+  check('路过事件可强制触发且挂起选项', pbOk && g22c.pending?.ev?.id?.startsWith('pb_'), g22c.pending?.ev?.id || '未触发');
+  if (g22c.pending) g22c.closePending();
+
+  // E-1：出村保底——十八岁未出城，引力事件上门
+  const g22d = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsD = Game.rollFateCards('gateway', g22d.meta);
+  g22d.rebirth(cardsD[0], '守村人', g22d.meta, 'life-gw');
+  g22d.state.life.age = 18;
+  g22d.state.life.flags.visitedCities = [];
+  const gwOk = maybeGateway(g22d, GATEWAY_EVENTS, EVENTS);
+  check('十八岁未出城触发引力事件', gwOk && !!g22d.pending, g22d.pending?.ev?.id || '未触发');
+  if (g22d.pending) g22d.closePending();
+  check('引力事件事件池非空且挂节点', Object.values(GATEWAY_EVENTS).every(e => e.gateway && e.nodes?.length), 'pool ok');
+
+  // E-2：初到一地有「此地可为之事」
+  const g22e = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsE = Game.rollFateCards('pocket', g22e.meta);
+  g22e.rebirth(cardsE[0], '初来者', g22e.meta, 'life-pocket');
+  g22e.state.life.flags.visitedNodes = [];
+  const jnPk = g22e.journal.length;
+  g22e.enterNode(g22e.state.life.location.node);
+  check('初到之地给出可为之事', g22e.journal.slice(jnPk).some(x => (x.text || '').includes('此地可为之事')), 'pocket ok');
+
+  // E-4：头一回出远门有里程碑
+  const g22f = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsF = Game.rollFateCards('milestone', g22f.meta);
+  g22f.rebirth(cardsF[0], '远行者', g22f.meta, 'life-ms');
+  g22f.state.life.flags.firstTravelDone = false;
+  // 找一条当前城市真实存在的路线走
+  const fromCity = g22f.state.life.location.city;
+  const destId = Object.keys(routes[fromCity] || {})[0];
+  let msOk = false;
+  if (destId) {
+    const jnMs = g22f.journal.length;
+    g22f.doTravel({}, `去${cities[destId].name}`);
+    if (g22f.pending) g22f.closePending();
+    msOk = (g22f.state.life.flags.firstTravelDone === true)
+      && g22f.journal.slice(jnMs).some(x => (x.text || '').includes('头一回真正离开家'));
+  }
+  check('首次跨城出行记里程碑（E-4）', msOk, destId || '无路线');
+
+  // 回归：问天——指路——出行 全链
+  let chainErr = null;
+  try {
+    const g22g = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+    const cardsG = Game.rollFateCards('chain', g22g.meta);
+    g22g.rebirth(cardsG[0], '全链', g22g.meta, 'life-chain');
+    for (let i = 0; i < 12; i++) {
+      if (g22g.pending) { g22g.closePending(); continue; }
+      g22g.input(['问天', '看看四周', '四处走走', '打听点消息', '跟路过的人搭句话', '出门转转'][i % 6]);
+    }
+  } catch (e) { chainErr = e.message; }
+  check('宽解析口语 12 步链路零异常', !chainErr, chainErr || 'ok');
 })();
 
 console.log(`\n${'='.repeat(40)}`);
