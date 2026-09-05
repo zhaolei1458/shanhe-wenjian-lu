@@ -9,7 +9,7 @@ import { maybeMeetRelation, advanceRelations, applyRelChoice } from './relations
 import { maybeFindEgg, hatchEgg, maybeCubRescue, resolveCubChoice, maybeTuogu, mountAging, checkTuoguDuty, lifespanOf } from './beastkin.js'; // 十二期：灵兽奇缘
 import { BEAST_EGGS } from '../content/beastEggs.js'; // 十二期：兽蛋池（袖中录展示）
 import { maybeOmen, maybeDream, doSettle, advanceHome, doAlias, maybeAliasReveal, doInvestigate, resolveCasePick, doBusiness, advanceBusiness, doFoundSect, advanceFoundedSect } from './dimensions.js'; // 十一期：九类新维度 B/D/E
-import { BUSINESS_KINDS } from '../content/dimensions.js'; // 十一期：业态名册
+import { BUSINESS_KINDS, CASES } from '../content/dimensions.js'; // 十一期：业态名册
 import { doKanyu, doZhenwu, doXunlong, resolveTombChoice, fengshuiYearTick, fengshuiVerdictLines } from './fengshui.js'; // 十三期：风水堪舆
 import { joinGuild, guildYearTick, resolveGuildRuleChoice, guildVerdictLines } from './guild.js'; // 十三期：百业行会
 import { npcYearTick, npcLifeCard, npcMemoryEcho } from './npcLives.js'; // 十七期：NPC 私人史
@@ -295,6 +295,17 @@ export class Game {
     if (life.home && !life.home.fs && !huotou.some(h => /^(请人看宅|堪舆|看风水)/.test(h))) huotou.push('请人看宅');
     if ((['zhuji', 'jindan', 'yuanying', 'huashen', 'lianxu', 'heti', 'dasheng', 'dujie', 'zhenxian', 'jinxian', 'taiyi', 'daluo', 'daozun'].includes(life.realm)
       || (life.wudaoRank != null && life.wudaoRank <= 6)) && !huotou.some(h => /^寻龙|点穴/.test(h))) huotou.push('寻龙点穴');
+    // 二十四期夜巡修 E：悬案曝光——查案系统零门槛却零曝光，bot 八轮只摸到 2 次。
+    // 还有未断的悬案时把"查案"挂进念头列表（案子断完就不出，避免诱人空点）。
+    if (CASES.some(c => !((life.flags?.doneCases || []).includes(c.id))) && !huotou.some(h => /^(查案|断案|接案)/.test(h))) huotou.push('查案');
+    // 二十四期夜巡修 F：佩戴曝光——行囊里有家伙却从不"用起来"，装备触达八轮仅 4 次。
+    // 无佩戴物、或有成色更高的未佩戴器物时出"用起来"（doEquip 空手/无名也有回应，不空点）。
+    {
+      const cands = life.items.filter(i => i.kind === 'weapon' || i.kind === 'treasure');
+      const cur = cands.find(i => i.id === life.equipped);
+      const better = cands.some(i => i.tier > (cur ? cur.tier : -1));
+      if (cands.length && (!life.equipped || better) && !huotou.some(h => /^(用起来|装备|佩戴)/.test(h))) huotou.push('用起来');
+    }
     // NPC 话头
     for (const nid of node.npcs || []) {
       const n = npcs[nid];
