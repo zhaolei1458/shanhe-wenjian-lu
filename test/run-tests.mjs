@@ -1882,7 +1882,7 @@ await (async () => {
   g22b.doPonder();
   if (g22b.pending) g22b.closePending();
   const pText = g22b.journal.slice(jnPn).map(j => j.text || '').join('\n');
-  check('二次琢磨给差异化回应（已琢磨过N遍）', pText.includes('琢磨过'), 'ponder ok');
+  check('二次琢磨给实路回应（二十四期改：线索+去处）', pText.includes('线索指着') || pText.includes('琢磨'), 'ponder ok');
 
   // B：复读熔断——练武六次，同句不超过两次
   const seen22 = [];
@@ -2008,6 +2008,75 @@ await (async () => {
   check('路过事件池 ≥ 15 条（含边地五条）', PASSBY_EVENTS.length >= 15, String(PASSBY_EVENTS.length));
   const frontierIds = ['pb_huanfang', 'pb_shangdui', 'pb_fenghuo', 'pb_mashi', 'pb_liumin'];
   check('边地五事件齐备', frontierIds.every(id => PASSBY_EVENTS.some(e => e.id === id)), 'ok');
+})();
+
+// ================= 闸二十四：琢磨心事三段收口（线索→实路→袖中录） =================
+(function () {
+  console.log('\n—— 闸二十四：琢磨心事三段收口 ——');
+  const hl24 = HIDDEN_LINES['hl_shancun_shanhong'];
+  const nodeName24 = nodes[EVENTS[hl24.hook].nodes[0]].name;
+
+  const g24 = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards24 = Game.rollFateCards('gate24a', g24.meta);
+  g24.rebirth(cards24[0], '琢磨行者', g24.meta, 'life-g24');
+  if (g24.pending) g24.closePending();
+  g24.state.life.flags.hiddenLine = 'hl_shancun_shanhong';
+
+  // 第一遍：给线索
+  let base24 = g24.journal.length;
+  g24.doPonder();
+  const seg1 = g24.journal.slice(base24).map(x => x.text || '').join('\n');
+  check('琢磨第一遍给线索指向', seg1.includes('心里搁着的事') && seg1.includes(hl24.title), seg1.slice(0, 60));
+
+  // 第二遍：给实路（含去处名，不再"先看看眼下能去哪儿"式敷衍）
+  base24 = g24.journal.length;
+  g24.doPonder();
+  const seg2 = g24.journal.slice(base24).map(x => x.text || '').join('\n');
+  check('琢磨第二遍给实路', seg2.includes(nodeName24) && !seg2.includes('琢磨过'), seg2.slice(0, 60));
+
+  // 第三遍：收进袖中录
+  base24 = g24.journal.length;
+  g24.doPonder();
+  const seg3 = g24.journal.slice(base24).map(x => x.text || '').join('\n');
+  check('琢磨第三遍收进袖中录', seg3.includes('袖中录'), seg3.slice(0, 60));
+
+  // 三遍之后：念头撤下、眼下栏心事撤下（不再诱人空点）
+  const ht24 = g24.currentScene().huatou;
+  check('琢磨满三遍后话头撤下', !ht24.some(h => h.startsWith('想想「' + hl24.title + '」')), ht24.slice(0, 3).join('/'));
+  check('琢磨满三遍后眼下栏心事撤下', g24.eyeNow().xinshi === null, String(g24.eyeNow().xinshi));
+
+  // 未琢磨时：念头在列、chip 在（不误伤首次体验）
+  const g24b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards24b = Game.rollFateCards('gate24b', g24b.meta);
+  g24b.rebirth(cards24b[0], '初想行者', g24b.meta, 'life-g24b');
+  if (g24b.pending) g24b.closePending();
+  g24b.state.life.flags.hiddenLine = 'hl_shancun_shanhong';
+  check('未琢磨时念头在列', g24b.currentScene().huatou.some(h => h.startsWith('想想「' + hl24.title + '」')), 'ok');
+  check('未琢磨时眼下栏心事在', g24b.eyeNow().xinshi && g24b.eyeNow().xinshi.title === hl24.title, 'ok');
+
+  // F：生计动词常驻——过日子的一半摆在明面上（二十四期修 B）
+  check('解析·清点行囊→items', parse('清点行囊', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} }).intent === 'items', 'ok');
+  check('解析·做工挣钱→work', parse('做工挣钱', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} }).intent === 'work', 'ok');
+  check('解析·吃点东西→eat', parse('吃点东西', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} }).intent === 'eat', 'ok');
+  check('解析·置办用度→buy', parse('置办用度', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} }).intent === 'buy', 'ok');
+  const g24c = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards24c = Game.rollFateCards('gate24c', g24c.meta);
+  g24c.rebirth(cards24c[0], '生计行者', g24c.meta, 'life-g24c');
+  if (g24c.pending) g24c.closePending();
+  g24c.state.life.location = { city: 'tiewa', node: 'tw_guanqiang' }; // 非 market 节点
+  g24c.state.life.money = 10;
+  let base24c = g24c.journal.length;
+  g24c.input('置办用度');
+  const seg24c = g24c.journal.slice(base24c).map(x => x.text || '').join('\n');
+  check('无市集处买→指路而非闭门羹', seg24c.includes('市集'), seg24c.slice(0, 60));
+  g24c.state.life.location = { city: 'tianqi', node: 'dongshi' }; // market 节点
+  base24c = g24c.journal.length;
+  g24c.input('置办用度');
+  const seg24d = g24c.journal.slice(base24c).map(x => x.text || '').join('\n');
+  check('市集上买→真置办', seg24d.includes('置办') && !seg24d.includes('没得卖'), seg24d.slice(0, 60));
+  const ht24c = g24c.currentScene().huatou;
+  check('市集念头含置办用度', ht24c.includes('置办用度'), ht24c.slice(0, 4).join('/'));
+  check('念头含生计三件套', ['做工挣钱', '清点行囊', '吃点东西'].every(h => ht24c.includes(h)), ht24c.join('/').slice(0, 60));
 })();
 
 console.log(`\n${'='.repeat(40)}`);

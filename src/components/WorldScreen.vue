@@ -138,10 +138,12 @@ const sleeve = computed(() => game.value.getSleeve());
 const HUATOU_LIMIT = 8;
 const huatouExpanded = ref(false);
 const isGoHuatou = (h) => /^去/.test(h);
+// 二十四期修 B：生计动词与出行同权——核心生活动作永不折叠（折叠区新手看不到就等于不存在）
+const isCoreHuatou = (h) => isGoHuatou(h) || /^(做工挣钱|清点行囊|吃点东西|置办用度)$/.test(h);
 const shownHuatou = computed(() => {
   const all = scene.value.huatou || [];
-  const go = all.filter(isGoHuatou);
-  const rest = all.filter(h => !isGoHuatou(h));
+  const go = all.filter(isCoreHuatou);
+  const rest = all.filter(h => !isCoreHuatou(h));
   if (huatouExpanded.value) return [...go, ...rest];
   const restRoom = Math.max(0, HUATOU_LIMIT - go.length);
   return [...go, ...rest.slice(0, restRoom)];
@@ -149,7 +151,7 @@ const shownHuatou = computed(() => {
 const huatouOverflow = computed(() => {
   const all = scene.value.huatou || [];
   if (huatouExpanded.value) return 0;
-  const go = all.filter(isGoHuatou).length;
+  const go = all.filter(isCoreHuatou).length;
   const rest = all.length - go;
   return Math.max(0, rest - Math.max(0, HUATOU_LIMIT - go));
 });

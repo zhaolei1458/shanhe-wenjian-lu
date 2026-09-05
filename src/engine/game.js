@@ -269,13 +269,21 @@ export class Game {
     const life = this.state.life;
     const huotou = (node.huatou || []).slice();
     // 二十一期修 C：暗线话头（心事→动作的翻译层；已了则不出）
+    // 二十四期修 A：琢磨满三遍——念头已磨平并写进袖中录，话头撤下，不再占着首屏诱人空点
     const hl = HIDDEN_LINES[life.flags.hiddenLine];
     if (hl && !(life.flags.doneEvents || []).includes(hl.hook)) {
-      huotou.unshift(`想想「${hl.title}」`);
+      if ((life.flags.pondered || {})[hl.id] === undefined || (life.flags.pondered || {})[hl.id] < 3) {
+        huotou.unshift(`想想「${hl.title}」`);
+      }
     }
     // 二十一期修 B：核心动词常驻（修行游戏最基本的动作不靠猜词；标签须命中意图锚头）
     if (!huotou.some(h => /^(打坐|修炼|行功|吐纳)/.test(h))) huotou.unshift('打坐吐纳');
     if (!huotou.some(h => /^(练功|练武|练剑|练拳|习武)/.test(h))) huotou.unshift('练武');
+    // 二十四期修 B：生计动词常驻——经济与家底系统摆在明面上，新手才摸得着"过日子"这一半
+    if (!huotou.some(h => /^(做工|干活|打工|找活)/.test(h))) huotou.push('做工挣钱');
+    if (!huotou.some(h => /^(清点|物品|家当|行囊)/.test(h))) huotou.push('清点行囊');
+    if (!huotou.some(h => /^(吃|喝|打酒|用饭)/.test(h))) huotou.push('吃点东西');
+    if ((node.tags || []).some(t => t === 'market' || t === 'hub') && !huotou.some(h => /^(买|购|置办)/.test(h))) huotou.push('置办用度');
     // NPC 话头
     for (const nid of node.npcs || []) {
       const n = npcs[nid];
@@ -900,7 +908,8 @@ export class Game {
         if (dest) return this.doTravel(p.slots, p.normalized);
         return this.say(this.routeGuidance(), 'echo');
       }
-      if (p.intent === 'buy') return this.say(this.freshText('buy_noMoney', ECHOES.buy_noMoney), 'echo');
+      // 二十四期修 B：光说"买"不指物——有市集就真置办，没市集就指路，不再吃"没钱"闭门羹
+      if (p.intent === 'buy') return this.doBuy(p.slots, p.normalized);
       // 二十二期修 A：想搭话就真搭——把话递给在场的活人，而不是直接吃闭门羹
       if (p.intent === 'talk' || p.intent === 'ask') return this.doTalk(p.slots, p.normalized);
       return this.doEcho('generic', p);
@@ -1928,8 +1937,10 @@ export class Game {
     const life = this.state.life;
     const hl = HIDDEN_LINES[life.flags.hiddenLine];
     const done = hl && (life.flags.doneEvents || []).includes(hl.hook);
+    // 二十四期修 A：琢磨满三遍——心事已收进袖中录，眼下栏 chip 一并撤下
+    const ponderedTimes = hl ? ((life.flags.pondered || {})[hl.id] || 0) : 0;
     return {
-      xinshi: hl && !done ? { id: hl.id, title: hl.title } : null,
+      xinshi: hl && !done && ponderedTimes < 3 ? { id: hl.id, title: hl.title } : null,
       realmWord: life.realm === 'fan' ? (life.xiwei > 40 ? '气感将临' : '未入修行') : `${REALMS[life.realm].name}${STAGES[life.realmStage]}境`,
     };
   }
@@ -1945,17 +1956,26 @@ export class Game {
       return;
     }
     const ev = EVENTS[hl.hook];
-    const nodeName = ev?.nodes?.length ? nodes[ev.nodes[0]]?.name : null;
+    const targetNode = ev?.nodes?.length ? nodes[ev.nodes[0]] : null;
+    const nodeName = targetNode?.name || null;
     // 二十二期修 D-2：已琢磨过——差异化回应，不再原句复读
+    // 二十四期修 A：琢磨要有终点——第一遍给线索，第二遍给实路，第三遍收进袖中录并从界面上撤下（不再"数遍数"刷屏）
     life.flags.pondered ||= {};
     const times = (life.flags.pondered[hl.id] || 0) + 1;
     life.flags.pondered[hl.id] = times;
     if (times === 1) {
       this.say(`（心里搁着的事——【${hl.title}】${hl.hint}${nodeName ? `\n你琢磨了半天，觉得这事得到${nodeName}走一趟才有下文。` : ''}）`, 'system');
-    } else if (nodeName) {
-      this.say(`（${hl.title}——这事你已经琢磨过${times}遍了，再想也不会多出一条路。线索还指着${nodeName}。${(nodes[life.location.node].links || []).some(id => nodes[id]?.name === nodeName) ? '抬腿就到——「去' + nodeName + '」。' : '先看看眼下能去哪儿。'}）`, 'system');
+    } else if (times === 2 && nodeName) {
+      const adjacent = (nodes[life.location.node].links || []).some(id => nodes[id]?.name === nodeName);
+      if (adjacent) {
+        this.say(`（${hl.title}——线索指着${nodeName}，抬腿就到。说一声「去${nodeName}」便是。）`, 'system');
+      } else if (targetNode && targetNode.city && targetNode.city !== life.location.city) {
+        this.say(`（${hl.title}——线索指着${nodeName}，那在${cities[targetNode.city]?.name || '别处'}地界，隔着千山万水。先出城赶路，到了那边的市镇再问路。）`, 'system');
+      } else {
+        this.say(`（${hl.title}——线索指着${nodeName}。多挪几个地方，路会自己通到那儿。）`, 'system');
+      }
     } else {
-      this.say(`（${hl.title}——这事你已想过多遍，念头磨平了，还是得靠腿。出门走走，兴许路自己冒出来。）`, 'system');
+      this.say(`（${hl.title}——这事你已琢磨透了，再想不出新的。你把它一笔一划写进袖中录·旧账册，合上册子：走到该到的地方，它自己会冒出来。）`, 'system');
     }
     this.advanceTime(1);
   }
