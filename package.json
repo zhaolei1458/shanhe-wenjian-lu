@@ -1,0 +1,21 @@
+{
+  "name": "shanhe-wenjian-lu",
+  "private": true,
+  "version": "21.0.0",
+  "type": "module",
+  "description": "山河问剑录——纯文字武侠仙侠沙盒（v0.9 可玩闭环）",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node test/run-tests.mjs",
+    "sim": "node scripts/sim.mjs"
+  },
+  "dependencies": {
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "vite": "^6.0.7",
+    "@vitejs/plugin-vue": "^5.2.1"
+  }
+}
