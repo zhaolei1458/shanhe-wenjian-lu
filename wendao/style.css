@@ -2515,3 +2515,28 @@ textarea.save-code:focus { border-color: var(--gold-dim); }
 .sh-fate-age { color: var(--text-faint); font-size: 12px; }
 .sh-fate-line { font-size: 12px; color: var(--text-dim); line-height: 1.7; margin-top: 2px; }
 .sh-fate-line b { color: var(--gold); font-family: var(--font-kai); margin-right: 6px; }
+
+/* ======================================================================
+   剧情演出层 · 深色墨卷底（修：story-box 原无底色，文字浮在半透明遮罩上不清）
+   ====================================================================== */
+#story-modal { background: rgba(12, 9, 4, 0.72); backdrop-filter: blur(4px); }
+#story-modal .story-box {
+  background: linear-gradient(180deg, #2e2718, #241e11) padding-box,
+              linear-gradient(165deg, #7a5c24, #57472a 38%, #4a3a1e 72%, #6e3226) border-box;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #e8dfc6;
+}
+#story-modal .story-chapter { color: #c9a86a; border-bottom-color: #4d4128; }
+#story-modal .story-p,
+#story-modal .story-text,
+#story-modal .story-montage .story-p { color: #e8dfc6; }
+#story-modal .story-page,
+#story-modal .story-choice-note { color: #a3936f; }
+#story-modal .story-foot { border-top-color: #4d4128; }
+#story-modal .story-who-title { color: #a3936f; }
+#story-modal .story-reward-title { color: #d4b478; }
+#story-modal .story-reward-line { color: #e8dfc6; }
+#story-modal .story-close-x { color: #a3936f; }
+#story-modal .story-close-x:hover { color: #d86a5e; }
