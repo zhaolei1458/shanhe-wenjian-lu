@@ -1184,15 +1184,18 @@ export class Game {
     const isQuiet = n => n && (n.tags || []).some(t => ['wild', 'lingdi', 'taoist', 'temple'].includes(t));
     const here = nodes[life.location.node];
     if (isQuiet(here)) {
+      // 二十四期夜巡修 K：到了清静地就坐下来——"寻个清静处"要的是行功，不是看风景。
+      // 此前到点后只回一句echo，bot 又被其余念头岔走，功法永远差最后一步（连续六轮 破境=0）。
       life.flags.cultNoisyFail = 0;
-      return this.say('此地本就清静。你寻了块平整石头坐下，呼吸渐渐沉了下去。', 'echo');
+      return this.doCultivate();
     }
     const near = (here.links || []).map(id => nodes[id]).filter(isQuiet);
     if (near.length) {
       this.say(`你离开喧处，往${near[0].name}去——那儿清静。`, 'scene');
       life.flags.cultNoisyFail = 0;
       this.enterNode(near[0].id);
-      return;
+      if (!this.state.alive) return;
+      return this.doCultivate();
     }
     for (const destId of Object.keys(routes[life.location.city] || {})) {
       const qnode = Object.values(nodes).find(n => n.city === destId && isQuiet(n));
@@ -1211,7 +1214,9 @@ export class Game {
         }
       }
       life.flags.cultNoisyFail = 0;
-      return;
+      if (!this.state.alive) return;
+      // 夜巡修 K：跨城寻静同样一口气到底——到清静节点即坐下行功
+      return this.doCultivate();
     }
     this.say('四下里都是人烟。你想：既入江湖，且在闹市里养着这口气——等路过山野古庙，再坐下来不迟。', 'echo');
   }
