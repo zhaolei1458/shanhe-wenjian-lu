@@ -4,34 +4,62 @@
    ============================================================ */
 
 :root {
-  --paper: #f5efe2;
-  --paper-dark: #ece3d0;
-  --ink: #2c2620;
-  --ink-soft: #6b6156;
-  --cinnabar: #a03a2a;
+  /* 2.1 UI 焕新：宣纸水墨全量变量（对齐参考框架） */
+  --paper: #f6f0df;        /* 面板纸 */
+  --paper-dark: #efe7d0;
+  --bg: #ece3cd;           /* 宣纸暖米底 */
+  --bg-soft: #e4d9bf;
+  --panel-2: #efe7d0;
+  --ink: #2e2a22;
+  --ink-soft: #5a5540;
+  --text: #3a3428;
+  --text-dim: #7a6e58;
+  --cinnabar: #a03a2a;     /* 朱砂 */
   --seal: #b5432f;
-  --border: #d8ccb4;
+  --dai: #3a6ea8;          /* 黛青 */
+  --gold: #7a5c24;         /* 赭金 */
+  --gold-bright: #5a4218;
+  --hp: #b8433e;
+  --exp: #5e8a4a;
+  --border: #cfc2a0;
+  --border-light: #ab9b74;
+  --gold-soft: rgba(122, 92, 36, 0.12);
+  /* 六品色阶：凡/良/上/珍/传世/仙 */
+  --grade-0: #8a877e; --grade-1: #588a3e; --grade-2: #3a6ea8;
+  --grade-3: #c77f2e; --grade-4: #c04b4b; --grade-5: #a8862a;
+  --radius: 8px;
+  --font-kai: "LXGW WenKai", "STKaiti", "KaiTi", "楷体", "Noto Serif SC", serif;
+  --font-body: "Noto Serif SC", "LXGW WenKai", "Source Han Serif SC", "STSong", "SimSun", serif;
 }
 
 * { box-sizing: border-box; }
 
 html, body, #app { height: 100%; margin: 0; }
 body {
-  background: var(--paper);
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  /* 宣纸底：暖光 + 远山墨韵 + 柔和晕影 */
   background-image:
-    radial-gradient(ellipse at 20% 10%, rgba(210, 195, 165, .35), transparent 55%),
-    radial-gradient(ellipse at 85% 85%, rgba(200, 185, 155, .3), transparent 50%);
+    radial-gradient(ellipse 900px 420px at 14% -6%, rgba(255, 250, 233, 0.6), transparent 62%),
+    radial-gradient(ellipse 64% 24% at 16% 104%, rgba(70, 88, 82, 0.18), transparent 72%),
+    radial-gradient(ellipse 74% 28% at 82% 108%, rgba(48, 66, 62, 0.22), transparent 72%),
+    radial-gradient(ellipse 620px 380px at 92% 12%, rgba(214, 190, 138, 0.3), transparent 70%),
+    radial-gradient(ellipse 1000px 640px at 50% 118%, rgba(150, 122, 66, 0.2), transparent 62%),
+    radial-gradient(ellipse 135% 105% at 50% 40%, transparent 62%, rgba(112, 90, 50, 0.16) 100%);
+  background-attachment: fixed;
   color: var(--ink);
-  font-family: "Kaiti SC", "STKaiti", "KaiTi", "Noto Serif SC", "SimSun", serif;
   line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app { height: 100%; }
 .screen {
-  max-width: 860px; margin: 0 auto; height: 100%;
+  margin: 0 auto; height: 100%;
   display: flex; flex-direction: column;
-  padding: 18px 20px;
+  padding: 14px 18px;
 }
+/* 三栏主屏吃满宽度，其余屏维持窄栏 */
+.screen:not(.world-screen) { max-width: 860px; }
 
 button {
   font-family: inherit; cursor: pointer;
@@ -305,3 +333,128 @@ button:active, .opt-btn:active, .huatou-btn:active, .mini-btn:active, .bn-btn:ac
 
 /* 成就章未得态（图鉴册） */
 .ach-off { opacity: 0.45; }
+
+/* ============================================================
+   2.1 UI 焕新：三栏布局（沿用凡人问道框架——左角色·中卷轴·右任务行囊）
+   ============================================================ */
+
+/* --- 顶栏：名号 + 资源条 --- */
+.top-title {
+  font-family: var(--font-kai); font-size: 20px; font-weight: bold;
+  letter-spacing: 6px; color: var(--ink);
+  text-shadow: 1px 1px 0 rgba(160, 58, 42, .12);
+  flex-shrink: 0;
+}
+.top-info {
+  display: flex; align-items: center; gap: 14px; flex: 1;
+  flex-wrap: wrap; font-size: 13.5px; color: var(--ink-soft);
+  min-width: 0;
+}
+.ti-name { color: var(--ink); font-size: 15px; letter-spacing: 1px; }
+.ti-name em { font-style: normal; color: var(--dai); }
+.ti-loc { letter-spacing: 1px; }
+.ti-hp { color: var(--hp); }
+.ti-money { color: var(--gold); }
+.ti-age { color: var(--ink-soft); }
+.top-right { display: flex; gap: 8px; flex-shrink: 0; }
+
+/* --- 三栏主格栅 --- */
+.ws-layout {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr) 272px;
+  gap: 14px;
+  margin-top: 10px;
+}
+.ws-col {
+  overflow-y: auto; min-height: 0;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.ws-center {
+  display: flex; flex-direction: column; min-height: 0; min-width: 0;
+}
+
+/* --- 卡片（左右栏通用：宣纸面板） --- */
+.panel-card {
+  background: rgba(255, 253, 247, 0.72);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 0 rgba(122, 92, 36, 0.06);
+}
+.card-title {
+  font-family: var(--font-kai); color: var(--cinnabar);
+  letter-spacing: 3px; font-size: 14px; margin-bottom: 8px;
+  border-bottom: 1px dashed var(--border); padding-bottom: 4px;
+}
+.lr-row {
+  display: flex; justify-content: space-between; gap: 8px;
+  font-size: 13.5px; padding: 2px 0; color: var(--ink);
+}
+.lr-row > span { color: var(--text-dim); flex-shrink: 0; }
+.lr-row > b { font-weight: normal; text-align: right; word-break: break-all; }
+
+/* --- 五维条 --- */
+.dim-bar { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 13px; }
+.dim-name { width: 32px; color: var(--text-dim); flex-shrink: 0; }
+.dim-track {
+  flex: 1; height: 6px; border-radius: 3px; overflow: hidden;
+  background: var(--bg-soft); border: 1px solid var(--border);
+}
+.dim-fill {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--dai), var(--gold));
+  border-radius: 3px; transition: width 0.3s ease;
+}
+.dim-val { width: 26px; text-align: right; color: var(--ink-soft); }
+
+/* --- 中栏：卷轴过滤页签 --- */
+.log-filters {
+  display: flex; gap: 6px; flex-shrink: 0;
+  padding: 4px 0; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.log-tool {
+  font-size: 12.5px; padding: 3px 12px; border-radius: 12px;
+  border-color: transparent; color: var(--text-dim);
+}
+.log-tool:hover { color: var(--cinnabar); border-color: var(--border); }
+.log-tool.on {
+  color: var(--cinnabar); border-color: var(--cinnabar);
+  background: rgba(160, 58, 42, 0.06);
+}
+
+/* --- 右栏：任务册 / 行囊 / 菜单 --- */
+.qz-title { color: var(--ink); font-size: 14px; margin-bottom: 4px; letter-spacing: 1px; }
+.qz-desc { font-size: 13px; color: var(--text-dim); line-height: 1.7; margin-bottom: 6px; }
+.qz-goal { font-size: 13px; padding: 2px 0; color: var(--ink); }
+.qz-goal i { font-style: normal; margin-right: 6px; }
+.g-done { color: var(--exp); }
+.g-todo { color: var(--cinnabar); }
+.qz-done-count {
+  margin-top: 8px; font-size: 12px; color: var(--text-dim);
+  border-top: 1px dashed var(--border); padding-top: 6px;
+  letter-spacing: 1px;
+}
+.bag-item { font-size: 13px; padding: 2px 0; color: var(--ink); line-height: 1.6; }
+.bag-item b { color: var(--gold-bright); font-weight: normal; }
+.menu-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.menu-btns .mini-btn { width: 100%; }
+
+/* --- 桌面端：底导航让位给三栏（右栏菜单 + 顶栏已覆盖其职能） --- */
+@media (min-width: 961px) {
+  .bottom-nav { display: none; }
+  .world-screen { padding-bottom: 14px; }
+}
+
+/* --- 窄屏：塌缩单栏（左右栏收进底导航面板） --- */
+@media (max-width: 960px) {
+  .ws-layout { grid-template-columns: minmax(0, 1fr); gap: 0; margin-top: 4px; }
+  .ws-col.ws-left, .ws-col.ws-right { display: none; }
+  .top-title { display: none; }
+  .top-info { gap: 10px; font-size: 12.5px; }
+  .ws-topbar { flex-wrap: wrap; }
+  /* 窄屏藏次要注意的资源，留名号/位置/气血/银钱 */
+  .ti-res:nth-child(n+5):not(.ti-money) { display: none; }
+}

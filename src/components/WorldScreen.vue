@@ -1,14 +1,22 @@
 <template>
   <div class="screen world-screen">
-    <!-- 顶栏 -->
-    <div class="ws-topbar">
-      <span class="ws-loc">{{ scene.city.name }} · {{ scene.area.name }} · {{ scene.node.name }}</span>
-      <span class="ws-time">{{ scene.time }}</span>
-      <span class="ws-actions">
+    <!-- 顶栏：名号境界 + 资源条（2.1 焕新：常驻可见，不开面板） -->
+    <header class="ws-topbar">
+      <div class="top-title">山河问剑录</div>
+      <div class="top-info">
+        <span class="ti-name">{{ life.name || '无名' }}<em v-if="realmWord">·{{ realmWord }}</em></span>
+        <span class="ti-res ti-loc">{{ scene.city.name }}·{{ scene.area.name }}·{{ scene.node.name }} {{ scene.time }}</span>
+        <span class="ti-res ti-hp">气血 {{ life.hp ?? '—' }}/{{ life.maxHp ?? '—' }}</span>
+        <span class="ti-res">修为 {{ life.xiwei ?? '—' }}</span>
+        <span class="ti-res">武学 {{ life.wugongXiuwei || 0 }}</span>
+        <span class="ti-res ti-money">{{ life.money ?? 0 }} 贯</span>
+        <span class="ti-res ti-age">{{ life.age ?? '?' }} 岁</span>
+      </div>
+      <div class="top-right">
         <button class="mini-btn" @click="store.sleeveOpen = !store.sleeveOpen">袖中录</button>
         <button class="mini-btn" @click="saveMenu = !saveMenu">存档</button>
-      </span>
-    </div>
+      </div>
+    </header>
 
     <div v-if="saveMenu" class="save-menu">
       <button class="mini-btn" v-for="(s, i) in ['slot1','slot2','slot3']" :key="s" @click="store.saveToSlot(s); saveMenu=false">存入·档{{ ['一','二','三'][i] }}</button>
@@ -17,54 +25,119 @@
       </span>
     </div>
 
-    <!-- 二十一期修 F：眼下栏（常驻锚点——暗线与境界，只给词不给数） -->
-    <div v-if="xinshi || realmWord" class="ws-eyesnow">
-      <button v-if="xinshi" class="mini-btn ghost eye-chip" @click="store.submit(`想想「${xinshi.title}」`)">心事·{{ xinshi.title }}</button>
-      <span v-else class="eye-quiet">心头无事</span>
-      <span v-if="realmWord" class="eye-realm">{{ realmWord }}</span>
-    </div>
+    <!-- 2.1 三栏布局：左角色 · 中卷轴 · 右任务行囊（移动端塌缩，用底导航面板） -->
+    <main class="ws-layout">
+      <!-- 左：角色状态常驻 -->
+      <aside class="ws-col ws-left panel-card" v-if="life.name !== undefined">
+        <div class="card-title">✦ 其人</div>
+        <div class="lr-row"><span>名姓</span><b>{{ life.name }}{{ life.alias ? `（化名"${life.alias}"）` : '' }}</b></div>
+        <div class="lr-row"><span>年岁</span><b>{{ life.age }} 岁</b></div>
+        <div class="lr-row"><span>境界</span><b>{{ realmWord || '未入修行' }}</b></div>
+        <div class="lr-row"><span>寿元</span><b>{{ life.lifespanMax ? `约 ${life.lifespanMax} 岁（现年 ${life.age}${spanWord}）` : '未卜' }}</b></div>
+        <div class="card-title" style="margin-top:10px">✦ 家底</div>
+        <div class="lr-row"><span>气血</span><b>{{ life.hp }} / {{ life.maxHp }}</b></div>
+        <div class="lr-row"><span>修为</span><b>{{ life.xiwei }}</b></div>
+        <div class="lr-row"><span>武学</span><b>{{ life.wugongXiuwei || 0 }}</b></div>
+        <div class="lr-row"><span>盘缠</span><b>{{ life.money }} 贯</b></div>
+        <div class="card-title" style="margin-top:10px">✦ 五维</div>
+        <div class="dim-bar" v-for="d in dimList" :key="d.k">
+          <span class="dim-name">{{ d.name }}</span>
+          <span class="dim-track"><i class="dim-fill" :style="{ width: d.v + '%' }"></i></span>
+          <b class="dim-val">{{ d.v }}</b>
+        </div>
+        <p class="panel-hint" v-if="gongfaBrief">武学：{{ gongfaBrief }}</p>
+      </aside>
+      <aside class="ws-col ws-left panel-card" v-else>
+        <div class="card-title">✦ 其人</div>
+        <p class="panel-empty">尚未落入此世。</p>
+      </aside>
 
-    <!-- 卷轴：光景与回声 -->
-    <div class="ws-scroll" ref="scroller">
-      <div v-for="m in game.journal" :key="m.t" :class="['jm', 'jm-' + m.kind]">{{ m.text }}</div>
-    </div>
+      <!-- 中：卷轴 + 抉择 + 输入（山河之魂，原样保留） -->
+      <section class="ws-center">
+        <!-- 二十一期修 F：眼下栏（常驻锚点） -->
+        <div v-if="xinshi || realmWord" class="ws-eyesnow">
+          <button v-if="xinshi" class="mini-btn ghost eye-chip" @click="store.submit(`想想「${xinshi.title}」`)">心事·{{ xinshi.title }}</button>
+          <span v-else class="eye-quiet">心头无事</span>
+          <span v-if="realmWord" class="eye-realm">{{ realmWord }}</span>
+        </div>
 
-    <!-- 挂起选项：事件/奇遇/人生节点 -->
-    <div v-if="pending && pendingOptions.length" class="ws-options">
-      <div class="opt-hint">{{ modeLabel }}</div>
-      <button v-for="(o, i) in pendingOptions" :key="i" class="opt-btn" @click="store.chooseOption(i)">
-        {{ ['一','二','三','四','五','六'][i] }}、{{ o.label }}
-      </button>
-    </div>
+        <!-- 游历记载：过滤页签（2.1 对齐参考框架） -->
+        <div class="log-filters">
+          <button v-for="f in FILTERS" :key="f.k" class="log-tool" :class="{ on: logFilter === f.k }" @click="logFilter = f.k">{{ f.label }}</button>
+        </div>
 
-    <!-- 战斗快捷 -->
-    <div v-else-if="inCombat" class="ws-options">
-      <div class="opt-hint">招来招往，各凭本事——怎么打，你自己说。</div>
-      <button class="opt-btn" @click="combat('出手，使最熟的一招')">出手</button>
-      <button class="opt-btn" @click="combat('守住门户，观他的气机')">观气</button>
-      <button class="opt-btn" @click="combat('收势守御')">守御</button>
-      <button class="opt-btn" @click="combat('走！')">抽身</button>
-    </div>
+        <!-- 卷轴：光景与回声 -->
+        <div class="ws-scroll" ref="scroller">
+          <div v-for="m in filteredJournal" :key="m.t" :class="['jm', 'jm-' + m.kind]">{{ m.text }}</div>
+        </div>
 
-    <!-- 话头扶手（二十一期修 E：超过 8 条折叠，宁可少摆不吓人） -->
-    <div v-else class="ws-huatou">
-      <button v-for="(h, i) in shownHuatou" :key="i" class="huatou-btn" @click="store.submit(h)">{{ h }}</button>
-      <button v-if="huatouOverflow > 0 && !huatouExpanded" class="huatou-btn ghost" @click="huatouExpanded = true">…还有别的念头（{{ huatouOverflow }} 条）</button>
-    </div>
+        <!-- 挂起选项：事件/奇遇/人生节点 -->
+        <div v-if="pending && pendingOptions.length" class="ws-options">
+          <div class="opt-hint">{{ modeLabel }}</div>
+          <button v-for="(o, i) in pendingOptions" :key="i" class="opt-btn" @click="store.chooseOption(i)">
+            {{ ['一','二','三','四','五','六'][i] }}、{{ o.label }}
+          </button>
+        </div>
 
-    <!-- 输入框（意头） -->
-    <div class="ws-inputrow">
-      <input
-        v-model="inputText"
-        class="ws-input"
-        :placeholder="inCombat ? '（战斗中——招式、守御、观气、抽身，皆随你）' : '意头随意打：去东市、和老道攀谈、打听漕银的案子、打坐……'"
-        @keydown.enter="send"
-      />
-      <button class="btn primary" @click="send">行</button>
-      <button class="btn ghost" @click="store.submit('问天')">问天</button>
-    </div>
+        <!-- 战斗快捷 -->
+        <div v-else-if="inCombat" class="ws-options">
+          <div class="opt-hint">招来招往，各凭本事——怎么打，你自己说。</div>
+          <button class="opt-btn" @click="combat('出手，使最熟的一招')">出手</button>
+          <button class="opt-btn" @click="combat('守住门户，观他的气机')">观气</button>
+          <button class="opt-btn" @click="combat('收势守御')">守御</button>
+          <button class="opt-btn" @click="combat('走！')">抽身</button>
+        </div>
 
-    <!-- 2.0 第零层：底导航（移动优先，拇指区在底部） -->
+        <!-- 话头扶手 -->
+        <div v-else class="ws-huatou">
+          <button v-for="(h, i) in shownHuatou" :key="i" class="huatou-btn" @click="store.submit(h)">{{ h }}</button>
+          <button v-if="huatouOverflow > 0 && !huatouExpanded" class="huatou-btn ghost" @click="huatouExpanded = true">…还有别的念头（{{ huatouOverflow }} 条）</button>
+        </div>
+
+        <!-- 输入框（意头） -->
+        <div class="ws-inputrow">
+          <input
+            v-model="inputText"
+            class="ws-input"
+            :placeholder="inCombat ? '（战斗中——招式、守御、观气、抽身，皆随你）' : '意头随意打：去东市、和老道攀谈、打听漕银的案子、打坐……'"
+            @keydown.enter="send"
+          />
+          <button class="btn primary" @click="send">行</button>
+          <button class="btn ghost" @click="store.submit('问天')">问天</button>
+        </div>
+      </section>
+
+      <!-- 右：任务册 + 行囊 + 菜单（桌面常驻；移动端收进底导航面板） -->
+      <aside class="ws-col ws-right">
+        <div class="panel-card" v-if="activeQuest">
+          <div class="card-title">✦ 任务册</div>
+          <div class="qz-title">【{{ activeQuest.title }}】</div>
+          <div class="qz-desc">{{ activeQuest.desc }}</div>
+          <div class="qz-goal" v-for="g in activeQuest.goals" :key="g.hint || g.type">
+            <i :class="g.done ? 'g-done' : 'g-todo'">{{ g.done ? '✓' : '○' }}</i>{{ g.hint || '（继续）' }}
+          </div>
+          <div class="qz-done-count">了结 {{ doneQuests }} / {{ totalQuests }}</div>
+        </div>
+        <div class="panel-card">
+          <div class="card-title">✦ 行囊</div>
+          <div class="bag-item" v-for="i in bagBrief" :key="i.id || i.name">
+            <b>【{{ i.name }}】</b>{{ equipped === i.id ? '（正在用）' : '' }}
+          </div>
+          <div v-if="!bagBrief.length" class="qz-desc">（穷有穷的轻省。）</div>
+        </div>
+        <div class="panel-card">
+          <div class="card-title">✦ 菜单</div>
+          <div class="menu-btns">
+            <button class="mini-btn" @click="activePanel = 'codex'">成就·图鉴</button>
+            <button class="mini-btn" @click="activePanel = 'skills'">武学册</button>
+            <button class="mini-btn" @click="activePanel = 'world'">天地册</button>
+            <button class="mini-btn" @click="store.sleeveOpen = true">袖中录</button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- 底导航（移动端） -->
     <nav class="bottom-nav">
       <button v-for="t in NAVS" :key="t.key" class="bn-btn" :class="{ on: activePanel === t.key }" @click="activePanel = activePanel === t.key ? '' : t.key">
         <span class="bn-ico">{{ t.ico }}</span><span class="bn-label">{{ t.label }}</span>
@@ -155,7 +228,6 @@ const inputText = ref('');
 const saveMenu = ref(false);
 const scroller = ref(null);
 
-const scene = computed(() => game.value.currentScene());
 const pending = computed(() => game.value.pending);
 const pendingOptions = computed(() => (game.value.pending?.options) || []);
 const modeLabel = computed(() => ({
@@ -163,6 +235,71 @@ const modeLabel = computed(() => ({
 }[game.value.ui?.mode] || '抉择'));
 const inCombat = computed(() => !!game.value.state?.combat);
 const sleeve = computed(() => game.value.getSleeve());
+
+// 2.1 焕新：顶栏 + 三栏布局数据口（沿用凡人问道框架的"角色常驻左、任务行囊常驻右"）
+const life = computed(() => (game.value && game.value.state && game.value.state.life) || {});
+const safeScene = computed(() => {
+  try {
+    const s = game.value.currentScene();
+    if (s && s.city && s.area && s.node) return s;
+  } catch {}
+  return { city: { name: '—' }, area: { name: '—' }, node: { name: '—' }, time: '', huatou: [] };
+});
+const scene = computed(() => safeScene.value);
+
+// 寿数分档（与 CharacterPanel 同源）
+const spanWord = computed(() => {
+  const l = life.value;
+  if (!l.lifespanMax || !l.age) return '';
+  const r = l.age / l.lifespanMax;
+  if (r >= 0.95) return '·油尽灯枯之相';
+  if (r >= 0.9) return '·鬓角见霜';
+  if (r >= 0.7) return '·知命之年';
+  return '·春秋正盛';
+});
+
+// 五维条
+const DIM_DEFS = [
+  { k: 'gengu', name: '根骨' }, { k: 'wuxing', name: '悟性' }, { k: 'qiyun', name: '气运' },
+  { k: 'meili', name: '魅力' }, { k: 'fuyuan', name: '福缘' },
+];
+const dimList = computed(() => {
+  const d = life.value.dims || {};
+  return DIM_DEFS.map(x => ({ k: x.k, name: x.name, v: d[x.k] || 0 }));
+});
+
+// 武学功法一句话
+const gongfaBrief = computed(() => {
+  const g = life.value.gongfa || [];
+  if (!g.length) return '';
+  return g.map(x => x.name + (x.level ? `（${levelWord(x.level)}）` : '')).join(' · ');
+});
+function levelWord(lv) {
+  return ['入门', '小成', '大成', '圆满', '出神入化'][lv] || '入门';
+}
+
+// 卷轴过滤页签：全卷 / 要事 / 刀兵 / 得失 / 回声
+const FILTERS = [
+  { k: 'all', label: '全卷', kinds: null },
+  { k: 'sys', label: '要事', kinds: ['system', 'event', 'imprint', 'year', 'death'] },
+  { k: 'combat', label: '刀兵', kinds: ['combat'] },
+  { k: 'gain', label: '得失', kinds: ['item', 'ledger'] },
+  { k: 'echo', label: '回声', kinds: ['echo'] },
+];
+const logFilter = ref('all');
+const journal = computed(() => (game.value && game.value.journal) || []);
+const filteredJournal = computed(() => {
+  const f = FILTERS.find(x => x.k === logFilter.value);
+  if (!f || !f.kinds) return journal.value;
+  return journal.value.filter(m => f.kinds.includes(m.kind));
+});
+
+// 右栏：任务册 / 行囊
+const activeQuest = computed(() => (life.value.questLog || []).find(q => q.status === 'active') || null);
+const doneQuests = computed(() => (life.value.questLog || []).filter(q => q.status === 'completed').length);
+const totalQuests = computed(() => (life.value.questLog || []).length);
+const bagBrief = computed(() => (life.value.items || []).map(i => ({ id: i.id, name: i.name })));
+const equipped = computed(() => life.value.equipped);
 
 // 二十一期修 E：话头折叠；二十三期修 F：出行念头（去X）置顶且永不折叠——路必须首屏可见
 const HUATOU_LIMIT = 8;
