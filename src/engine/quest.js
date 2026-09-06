@@ -4,9 +4,11 @@
 // 纪律：目标字段即消费面（questTick 读什么，questline 就写什么）
 // ============================================================
 import { VILLAGE_ORPHAN } from '../content/questlines/village_orphan.js';
+import { MODAO } from '../content/questlines/modao.js'; // 2.0 第四层：魔道余孽身世局
+import { HUANGZU } from '../content/questlines/huangzu.js'; // 2.0 第四层：皇族庶子身世局
 import { LONGEVITY, appendLongevity } from '../content/questlines/longevity.js'; // 2.0 第三层：长生引导线
 
-const QUESTLINES = [VILLAGE_ORPHAN];
+const QUESTLINES = [VILLAGE_ORPHAN, MODAO, HUANGZU];
 
 function currentQuestline(life) {
   return QUESTLINES.find(q => q.matchFate.test(life.fateId || ''));

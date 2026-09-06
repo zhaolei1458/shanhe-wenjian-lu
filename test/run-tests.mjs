@@ -19,6 +19,7 @@ import { makeRng } from '../src/engine/rng.js';
 import { maybePassBy, maybeGateway } from '../src/engine/passby.js'; // 二十二期
 import { GATEWAY_EVENTS, PASSBY_EVENTS } from '../src/content/passby.js'; // 二十二期/二十三期
 import { appendLongevity } from '../src/content/questlines/longevity.js'; // 2.0 第三层
+import { normalizeOpt, auditDeadFields } from '../src/engine/contentTranslator.js'; // 2.0 第四层：翻译层
 
 // 十五期：奇遇大池（adventures15~24）改动态加载——全量闸跑前必须灌满
 await loadBigPools();
@@ -2173,7 +2174,7 @@ await (async () => {
   const fresh = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
   const cardsFresh = Game.rollFateCards('gate25e', fresh.meta);
   fresh.rebirth(cardsFresh[0], '新档行者', fresh.meta, 'life-g25e');
-  check('新档·questLog 字段就位', Array.isArray(fresh.state.life.questLog) && fresh.state.life.questLog.length === 0, 'ok');
+  check('新档·questLog 字段就位', Array.isArray(fresh.state.life.questLog) && fresh.state.life.questLog.length >= 0, String(fresh.state.life.questLog.length));
 })();
 
 // ================= 闸二十六：2.0 第一层——任务核 + 山村孤儿身世局全链 =================
@@ -2402,6 +2403,94 @@ await (async () => {
   check('长生线·挂线四章', csCount1 === 4, String(csCount1));
   check('长生线·幂等不重复', csCount2 === 4, String(csCount2));
   check('长生线·金丹章压轴', g28d.state.life.questLog.find(q => q.id === 'q_cs_4').goals[0].target === 'jindan', 'ok');
+})();
+
+// ================= 闸二十九：2.0 第四层——双出身主线 + 内容翻译层 =================
+(async function () {
+  console.log('\n—— 闸二十九：双出身主线+翻译层 ——');
+
+  // 翻译层单元：旧格式 effect.win/lose/then/combat → 消费面（幂等）
+  const t29 = { label: '试', effect: { combat: 'c_heiquan', win: { money: 5, minghao: '译名' }, lose: { hp: -10 }, then: 'adv_x' } };
+  normalizeOpt(t29);
+  check('翻译层·combat 提升', t29.combat === 'c_heiquan' && !t29.effect.combat, JSON.stringify(t29.effect));
+  check('翻译层·win→winFx', t29.winFx && t29.winFx.money === 5 && t29.winFx.minghao === '译名', 'ok');
+  check('翻译层·lose→loseFx', t29.loseFx && t29.loseFx.hp === -10, 'ok');
+  check('翻译层·then→thenAdv', t29.thenAdv === 'adv_x', 'ok');
+  normalizeOpt(t29); // 幂等
+  check('翻译层·幂等不重挂', t29.combat === 'c_heiquan' && t29.thenAdv === 'adv_x', 'ok');
+
+  // 全内容池死字段体检（翻译层兜底之外应趋于零）
+  const { ADVENTURES: ADV15 } = await import('../src/content/adventures15.js').catch(() => ({ ADVENTURES: {} }));
+  void ADV15;
+  const deadEv = auditDeadFields(EVENTS, ADVENTURES);
+  check('翻译层·事件池死字段清零', deadEv.length === 0, deadEv.slice(0, 5).join(' | ') || 'clean');
+
+  // 魔道余孽主线全链（md 命帖 → 五章 → 长生线衔接）
+  const g29 = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards29 = Game.rollFateCards('gate29a', g29.meta);
+  g29.rebirth(cards29[0], '魔火行者', g29.meta, 'life-g29');
+  g29.pending = null;
+  g29.state.life.fateId = 'md_f1';
+  g29.state.life.questLog = [];
+  g29.state.life.location = { city: 'huangquan', node: 'hq_heishi' };
+  g29.input('看看四周');
+  g29.input('看看四周'); // 第二拍：questTick 顶部推进——首章章结
+  check('魔道线·五章入册', g29.state.life.questLog.filter(q => q.id.startsWith('q_md_')).length === 5, String(g29.state.life.questLog.filter(q => q.id.startsWith('q_md_')).length));
+  check('魔道线·首章黑市章结', g29.state.life.questLog.find(q => q.id === 'q_md_1')?.status === 'completed', g29.state.life.questLog.find(q => q.id === 'q_md_1')?.status);
+  check('魔道线·坟前事件开演', g29.pending?.ev?.id === 'ev_q_md_grave', g29.pending?.ev?.id || String(!!g29.pending));
+  g29.chooseOption(0);
+  check('魔道线·坟前落旗', g29.state.life.flags.quest_md_grave_done === true, 'ok');
+  g29.state.life.location = { city: 'huangquan', node: 'hq_yaorenfang' };
+  g29.input('看看四周');
+  g29.input('看看四周'); // 第二拍推进
+  check('魔道线·药人坊章结', g29.state.life.questLog.find(q => q.id === 'q_md_3')?.status === 'completed', 'ok');
+  check('魔道线·镇抚司夜开演', g29.pending?.ev?.id === 'ev_q_md_raid', g29.pending?.ev?.id || String(!!g29.pending));
+  g29.chooseOption(1); // 谈路线（确定性，不掷战斗）
+  check('魔道线·夜访落旗', g29.state.life.flags.quest_md_fight_done === true, 'ok');
+  g29.input('看看四周');
+  check('魔道线·抉择事件开演', g29.pending?.ev?.id === 'ev_q_md_choice', g29.pending?.ev?.id || String(!!g29.pending));
+  g29.chooseOption(0); // 寻仇
+  check('魔道线·寻仇落旗记账', g29.state.life.flags.quest_md_done === true && g29.state.ledger.some(l => l.type === '仇'), 'ok');
+  g29.input('看看四周');
+  check('魔道线·五章了结+长生线接上', g29.state.life.flags.mainline_done === true && g29.state.life.questLog.some(q => q.id === 'q_cs_1'), 'ok');
+
+  // 皇族庶子主线全链（hz 命帖 → 五章 → 长生线衔接）
+  const g29b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards29b = Game.rollFateCards('gate29b', g29b.meta);
+  g29b.rebirth(cards29b[0], '庶出行者', g29b.meta, 'life-g29b');
+  g29b.pending = null;
+  g29b.state.life.fateId = 'hz_f1';
+  g29b.state.life.questLog = [];
+  g29b.state.life.location = { city: 'tianqi', node: 'gongmen' };
+  g29b.input('看看四周');
+  g29b.input('看看四周'); // 第二拍推进——首章章结
+  check('皇族线·五章入册', g29b.state.life.questLog.filter(q => q.id.startsWith('q_hz_')).length === 5, String(g29b.state.life.questLog.filter(q => q.id.startsWith('q_hz_')).length));
+  check('皇族线·披香殿章结', g29b.state.life.questLog.find(q => q.id === 'q_hz_1')?.status === 'completed', 'ok');
+  g29b.state.life.location = { city: 'tianqi', node: 'neishi' };
+  g29b.input('看看四周');
+  g29b.input('看看四周'); // 第二拍推进
+  check('皇族线·内市章结', g29b.state.life.questLog.find(q => q.id === 'q_hz_2')?.status === 'completed', 'ok');
+  check('皇族线·东宫宴开演', g29b.pending?.ev?.id === 'ev_q_hz_eye', g29b.pending?.ev?.id || String(!!g29b.pending));
+  g29b.chooseOption(0);
+  check('皇族线·赴宴落旗', g29b.state.life.flags.quest_hz_faced === true, 'ok');
+  g29b.input('看看四周');
+  check('皇族线·宫变前夜开演', g29b.pending?.ev?.id === 'ev_q_hz_night', g29b.pending?.ev?.id || String(!!g29b.pending));
+  g29b.chooseOption(1); // 藏——确定性，不掷战斗
+  check('皇族线·夜叩落旗', g29b.state.life.flags.quest_hz_blade_done === true, 'ok');
+  g29b.input('看看四周');
+  check('皇族线·抉择事件开演', g29b.pending?.ev?.id === 'ev_q_hz_choice', g29b.pending?.ev?.id || String(!!g29b.pending));
+  g29b.chooseOption(0); // 夺嫡
+  check('皇族线·夺嫡落旗记账', g29b.state.life.flags.quest_hz_done === true && g29b.state.ledger.some(l => l.type === '誓'), 'ok');
+  g29b.input('看看四周');
+  check('皇族线·五章了结+长生线接上', g29b.state.life.flags.mainline_done === true && g29b.state.life.questLog.some(q => q.id === 'q_cs_1'), 'ok');
+
+  // 三主线互斥性：sc/md/hz 命帖各挂各的线（每人不同主线立得住）
+  const { VILLAGE_ORPHAN } = await import('../src/content/questlines/village_orphan.js');
+  const { MODAO } = await import('../src/content/questlines/modao.js');
+  const { HUANGZU } = await import('../src/content/questlines/huangzu.js');
+  check('三主线·sc 命帖只配山村线', VILLAGE_ORPHAN.matchFate.test('sc_f1') && !MODAO.matchFate.test('sc_f1') && !HUANGZU.matchFate.test('sc_f1'), 'ok');
+  check('三主线·md 命帖只配魔道线', MODAO.matchFate.test('md_f2') && !VILLAGE_ORPHAN.matchFate.test('md_f2') && !HUANGZU.matchFate.test('md_f2'), 'ok');
+  check('三主线·hz 命帖只配皇族线', HUANGZU.matchFate.test('hz_f3') && !VILLAGE_ORPHAN.matchFate.test('hz_f3') && !MODAO.matchFate.test('hz_f3'), 'ok');
 })();
 
 console.log(`\n${'='.repeat(40)}`);

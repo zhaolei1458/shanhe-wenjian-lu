@@ -78,6 +78,7 @@ import '../content/adventures3.js'; // v4.0 三四期奇遇扩桩
 import { ECHOES, TRAVEL_EVENTS, YEAR_MARKS, PAYLOADS, BREAKTHROUGH_TEXT } from '../content/copy.js';
 import { startCombat, combatRound, endCombat, playerMoves, COMBAT_TEMPLATES } from './combat.js';
 import { questTick, questHint, initQuests } from './quest.js'; // 2.0 第一层：任务核
+import { normalizeOpt, normalizeChancePair } from './contentTranslator.js'; // 2.0 第四层：内容翻译层（plan 4.1）
 import { tryCapture, feedMount, xunLevelOf, mountDeath } from './riding.js';
 import { beginNetherworld, planDianQueue, nwAdvance } from './netherworld.js';
 import { FESTIVALS, SEASON_FESTIVALS, MIWEN_POOL, DAOZANG_SPOTS, REGION_FLAVOR } from '../content/festivals.js';
@@ -393,6 +394,7 @@ export class Game {
     }
     this.rollNodeEvents(node);
     this.checkAdventures(node, opts);
+    questTick(this); // 2.0 第四层：到地即判——node/city 目标在踏入这一拍就章结（不再等下一次输入）
   }
 
   // ---------- 事件调度 ----------
@@ -812,9 +814,9 @@ export class Game {
         this.afterCombatWin(opts);
       }
     } else if (result === 'lose') {
-      if (opts.fromEvent && !c.tpl.lethal && c.tpl.loseText) {
-        // 2.0 第二层：事件战败而不死——伤是真伤，命留给你怕（坑 3.1 成长闭环：输了会怕死，但还有下一手）
-        this.say(c.tpl.loseText, 'combat');
+      if (opts.fromEvent && (opts.loseFx || (!c.tpl.lethal && c.tpl.loseText))) {
+        // 2.0 第二/四层：事件战败而不死——模板带 loseText 即活；内容显式挂 loseFx 可把致命战留命（主线不断头）
+        this.say(opts.loseFx?.text_after || c.tpl.loseText, 'combat');
         if (opts.loseFx) {
           if (opts.loseFx.text_after) this.say(opts.loseFx.text_after, 'combat');
           this.applyEffect(opts.loseFx, 'combat');
@@ -1936,6 +1938,7 @@ export class Game {
   resolveEventOption(opt) {
     const life = this.state.life;
     const p0 = this.pending; // 十六期：链上守卫的基准幕
+    normalizeOpt(opt); normalizeChancePair(opt); // 2.0 第四层：翻译层——旧格式死字段 → 消费面（幂等）
     // 幽冥余程选项（不走常规效果管道）
     if (opt.nw) {
       if (opt.effect) this.applyEffect(opt.effect, 'event');
@@ -2026,7 +2029,6 @@ export class Game {
     if (opt.chance !== undefined) {
       if (this.rng.chance(opt.chance)) {
         if (opt.success) {
-          if (opt.success.combat) opt.combat = opt.success.combat; // 2.0 第二层：胜路也接战斗
           if (opt.success.text_after) {
             this.say(opt.success.text_after, 'event');
             this.applyEffect(opt.success, 'event');
@@ -2036,15 +2038,13 @@ export class Game {
         this.say(opt.fail?.text_after || '', 'event');
         if (opt.fail?.ledger) this.applyEffect(opt.fail, 'event');
         if (opt.fail?.flags) this.applyEffect(opt.fail, 'event');
-        if (opt.fail?.combat) opt.combat = opt.fail.combat; // 2.0 第二层：败路接战斗（坑 3.1 fail.combat 旧写法）
       }
     } else {
       if (opt.effect) this.applyEffect(opt.effect, 'event');
       if (opt.text_after) this.say(opt.text_after, 'event');
       if (opt.win?.minghao) this.applyEffect(opt.win, 'event');
     }
-    // 2.0 第二层（坑 3.1 翻译层）：内容层旧写法 effect.combat 提升到顶层，让战斗真发生
-    if (!opt.combat && opt.effect?.combat) opt.combat = opt.effect.combat;
+    // 2.0 第四层（plan 4.1）：combat/winFx/loseFx/thenAdv 的字段翻译已由翻译层在入口做（normalizeOpt）
     if (!this.state.alive || this.pending !== p0) return; // 十六期：效果致死/引幽冥——旧链让位
     if (opt.sleeve_add) this.applyEffect(opt, 'event');
     if (opt.combat) {
