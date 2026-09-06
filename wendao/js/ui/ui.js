@@ -510,6 +510,7 @@ const UI = {
           ${!b.trip ? `<button class="btn btn-sm" data-action="act-beast-dispatch" data-uid="${b.uid}" title="外出寻宝，数日后带回灵材">派 遣</button>` : ''}
           ${!b.evolved && b.level >= 10 ? `<button class="btn btn-sm btn-primary" data-action="act-beast-evolve" data-uid="${b.uid}">蜕 变</button>` : ''}
           <button class="btn btn-sm" data-action="act-beast-feed" data-uid="${b.uid}" ${Bag.count('m_neidan') ? '' : 'disabled'}>喂内丹（${Bag.count('m_neidan')}）</button>
+          <button class="btn btn-sm" data-action="act-beast-feed2" data-uid="${b.uid}" ${Bag.count('m_zhenxiu') || Bag.count('m_shouliang') ? '' : 'disabled'} title="兽粮 +120 经验 / 珍馐 +400 经验">喂兽粮（${Bag.count('m_zhenxiu') || Bag.count('m_shouliang')}）</button>
           <button class="btn btn-sm btn-danger" data-action="act-beast-free" data-uid="${b.uid}">放归</button>
         </div>
       </div>`;
@@ -819,6 +820,15 @@ const UI = {
         </div>
         <div class="gf-actions"><button class="btn btn-sm btn-primary" data-action="act-draw">画符（${Utils.fmtNum(CraftSys.drawCost(p))}灵石）</button></div>
       </div>` : '';
+    // v21 功法参悟（功法残页 ×3 拼合成法）
+    const canwuSection = `<div class="shop-section-title">◈ 参悟案（功法残页 ×3 拼合成法）</div>
+      <div class="shop-row">
+        <div class="gf-info">
+          <div class="gf-name">残页参悟</div>
+          <div class="gf-desc">将散佚的功法残页互校拼合，或可补全出一部完整功法（当前持有：${Bag.count('m_gongfa')} 页）。</div>
+        </div>
+        <div class="gf-actions"><button class="btn btn-sm" data-action="act-canwu" ${Bag.count('m_gongfa') >= 3 ? '' : 'disabled'}>参 悟</button></div>
+      </div>`;
     // v13 悬赏任务板
     const B = BountySys.stateOf(p);
     const r = BountySys.rewards(p);
@@ -998,6 +1008,7 @@ const UI = {
         ${bountySection}
         ${blackSection}
         ${alchemySection}
+        ${canwuSection}
         ${talismanSection}
         ${enhanceSection}
         ${forgeSection}
@@ -1243,6 +1254,8 @@ const UI = {
       const gq = def.grade ?? def.tier ?? 0;   // v4：品质档（材料按 tier 折算）
       let btns = '';
       if (def.type === 'pill') btns = `<button class="btn btn-sm" data-action="act-use" data-item="${id}">服用</button>${p.bag[id] > 1 && (def.use || {}).exp ? `<button class="btn btn-sm" data-action="act-use-multi" data-item="${id}" title="连服五枚（丹毒将满自动停）">×5</button>` : ''}`;
+      if (def.type === 'map') btns = `<button class="btn btn-sm btn-primary" data-action="act-use" data-item="${id}">寻 宝</button>`;
+      if (def.type === 'egg') btns = `<button class="btn btn-sm btn-primary" data-action="act-hatch" data-item="${id}">孵 化</button>`;
       if (def.type === 'gongfa') btns = `<button class="btn btn-sm" data-action="act-learn" data-item="${id}">学习</button>`;
       if (def.type === 'artifact') {
         const isOn = Object.values(p.equipped).some(e => e && Utils.eqId(e) === id);

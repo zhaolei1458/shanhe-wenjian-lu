@@ -38,7 +38,7 @@ const Battle = {
       enemy, ctx,
       busy: false, over: false,
       defending: false,
-      buffs: { defPower: 0, defRounds: 0, dodgeBonus: 0, dodgeRounds: 0 },
+      buffs: { defPower: 0, defRounds: 0, dodgeBonus: 0, dodgeRounds: 0, reflect: 0, reflectRounds: 0 },
       menu: null,
       logs: [],
       floats: [],      // v7：浮动伤害/治疗数字队列（render 时飘出）
@@ -495,6 +495,95 @@ const Battle = {
     this.autoNext();
   },
 
+  /** v21 法宝技：身上任意法宝觉醒的随机战技，耗真元祭出 */
+  equippedFabaoSkill() {
+    const p = Game.player;
+    if (!p || !p.equipped) return null;
+    for (const inst of Object.values(p.equipped)) {
+      const sk = (typeof ForgeSys !== 'undefined' && ForgeSys.fabaoSkillOf) ? ForgeSys.fabaoSkillOf(inst) : null;
+      if (sk) return { sk, inst };
+    }
+    return null;
+  },
+  async actFabao() {
+    const B = this.active;
+    const p = Game.player;
+    const st = Stat.compute(p);
+    if (!B || B.over || B.busy) return;
+    const got = this.equippedFabaoSkill();
+    if (!got) { UI.toast('身上没有觉醒战技的法宝'); return; }
+    const sk = got.sk;
+    if ((B.zhenyuan || 0) < (sk.cost || 1)) { UI.toast(`真元不足（需 ${sk.cost} 点，防御可蓄真元）`); return; }
+    B.busy = true;
+    B.menu = null;
+    B.zhenyuan -= sk.cost || 1;
+    const e = B.enemy;
+    this.log(`【法宝技·${sk.name}】你祭起<b>${GameData.ITEMS[Utils.eqId(got.inst)] ? GameData.ITEMS[Utils.eqId(got.inst)].name : '法宝'}</b>——`, 'log-gain');
+    if (sk.kind === 'capture') {
+      // 收摄乾坤：低血敌直接摄入炼化
+      this.fxShow('sword');
+      await this.wait(400);
+      if (e.hp > 0 && e.hp <= e.hpMax * (sk.cap || 15) / 100) {
+        const dmg = e.hp;
+        e.hp = 0;
+        B.stats.out += dmg; if (B.stats.src) B.stats.src.ult += dmg;
+        this.pushFloat('enemy', '收', 'crit');
+        B.hitShake = true;
+        this.log(`宝光垂落，将力竭的 <b>${e.name}</b> 整个摄入其中——炼化收摄，一气呵成！`, 'log-crit');
+      } else {
+        let dmg = Stat.afterDef(this.myAtk(st) * (sk.power || 2.6), this.enDef(e)) * Utils.randF(0.95, 1.2);
+        dmg = Math.max(1, Math.round(dmg));
+        e.hp = Math.max(0, e.hp - dmg);
+        B.stats.out += dmg; if (B.stats.src) B.stats.src.ult += dmg;
+        this.pushFloat('enemy', `-${dmg}`, 'crit');
+        B.hitShake = true;
+        this.log(`宝光如瀑罩落——造成 <b>${dmg}</b> 点伤害！（其气血不足一成五时将被直接收摄）`, 'log-crit');
+      }
+    } else if (sk.kind === 'damage' || sk.kind === 'drain') {
+      this.fxShow(sk.kind === 'drain' ? 'ghost' : 'fire');
+      await this.wait(400);
+      let dmg = Stat.afterDef(this.myAtk(st) * (sk.power || 2.2), this.enDef(e)) * Utils.randF(0.95, 1.2) * this.moraleMul() * this.comboMul();
+      dmg = Math.max(1, Math.round(dmg));
+      e.hp = Math.max(0, e.hp - dmg);
+      B.stats.out += dmg; if (B.stats.src) B.stats.src.ult += dmg;
+      this.pushFloat('enemy', `-${dmg}`, 'crit');
+      B.hitShake = true;
+      let extra = '';
+      if (sk.kind === 'drain' && p.hp > 0) {
+        const leech = Math.round(dmg * (sk.leech || 0.6));
+        p.hp = Math.min(st.maxHp, p.hp + leech);
+        this.pushFloat('me', `+${leech}`, 'heal');
+        extra = `，化取 <b>${leech}</b> 点气血反哺己身`;
+      }
+      if (sk.fx) {
+        this.applyEnemyFx(e, { kind: sk.fx, pct: sk.pct || 25, rounds: sk.rounds || 2 });
+      }
+      this.log(`造成 <b>${dmg}</b> 点伤害${extra}！`, 'log-crit');
+    } else if (sk.kind === 'fx') {
+      if (sk.fx === 'freeze') {
+        const resist = e.elite ? 30 : 12;
+        if (Utils.chance(resist)) this.log(`钟鸣荡魄，却被 ${e.name} 以妖力震开——未能定住其身形！`, 'log-warn');
+        else this.applyEnemyFx(e, { kind: 'freeze', rounds: sk.rounds || 1 }, `钟鸣定形——${e.name} 被定在原地，下一回合无法动弹！`);
+      } else {
+        this.applyEnemyFx(e, { kind: sk.fx, pct: sk.pct || 30, rounds: sk.rounds || 2 });
+      }
+    } else if (sk.kind === 'shield') {
+      StatusFx.add(B.myFx, { kind: 'shield', pct: sk.power || 35, rounds: sk.rounds || 2 });
+      this.pushFloat('me', '宝光护体', 'heal');
+      this.log(`宝光罩体——${sk.rounds || 2} 回合内所受伤害减轻${sk.power || 35}%！`, 'log-gain');
+    }
+    this.render();
+    if (B.enemy.hp <= 0) { await this.victory(); return; }
+    await this.wait(400);
+    await this.enemyTurn();
+    if (!this.active) return;
+    if (B.enemy.hp <= 0) { await this.victory(); return; }
+    if (await this.afterEnemyPhase(st)) return;
+    B.busy = false;
+    this.render();
+    this.autoNext();
+  },
+
   /** v13：给敌方施加状态（符箓/破煞法诀） */
   applyEnemyFx(e, st, logFmt) {
     StatusFx.add(e.fx, st);
@@ -757,6 +846,26 @@ const Battle = {
               B.enemy.hp = Math.max(0, B.enemy.hp - thunder);
               this.log(`一道追雷随符而落！再对 ${B.enemy.name} 造成 <b>${thunder}</b> 点伤害！`, 'log-crit');
             }
+            // v21 天雷符：四成几率麻痹一回合
+            if (def.stunChance && B.enemy.hp > 0 && Utils.chance(def.stunChance)) {
+              const resist = B.enemy.elite ? 25 : 8;
+              if (Utils.chance(resist)) this.log(`【${def.name}】雷光缠绕，却被 ${B.enemy.name} 强行挣脱！`, 'log-warn');
+              else this.applyEnemyFx(B.enemy, { kind: 'stun', rounds: 1 }, `【${def.name}】雷威镇身——${B.enemy.name} 被麻痹，下一回合无法动弹！`);
+            }
+          } else if (fk === 'heal') {
+            // v21 疗伤符：回复气血
+            const heal = Math.round(st.maxHp * (def.power || 35) / 100);
+            p.hp = Math.min(st.maxHp, p.hp + heal);
+            this.pushFloat('me', `+${heal}`, 'heal');
+            this.log(`你祭出 <b>${def.name}</b>——灵光入体，伤处合拢，气血恢复 <b>${heal}</b> 点！`, 'log-gain');
+          } else if (fk === 'poison') {
+            // v21 蚀毒符：中毒（每回合按上限百分比损血）
+            this.applyEnemyFx(B.enemy, { kind: 'poison', pct: def.pct || 3.5, rounds: def.rounds || 3 }, `【${def.name}】符毒无色无声——${B.enemy.name} 中毒，每回合损血，持续 ${def.rounds || 3} 回合！`);
+          } else if (fk === 'reflect') {
+            // v21 玄壁符：受击反伤
+            B.buffs.reflect = def.power || 30; B.buffs.reflectRounds = def.rounds || 3;
+            this.pushFloat('me', '玄壁环身', 'heal');
+            this.log(`你祭出 <b>${def.name}</b>——玄壁环身，${def.rounds || 3} 回合内受击反弹${def.power || 30}%伤害！`, 'log-gain');
           } else if (fk === 'shield') {
             StatusFx.add(B.myFx, { kind: 'shield', pct: def.power || 40, rounds: def.rounds || 2 });
             this.pushFloat('me', '金光护体', 'heal');
@@ -1051,6 +1160,7 @@ const Battle = {
     // 回合数递减
     if (B.buffs.defRounds > 0) { B.buffs.defRounds--; if (B.buffs.defRounds === 0) B.buffs.defPower = 0; }
     if (B.buffs.dodgeRounds > 0) { B.buffs.dodgeRounds--; if (B.buffs.dodgeRounds === 0) B.buffs.dodgeBonus = 0; }
+    if (B.buffs.reflectRounds > 0) { B.buffs.reflectRounds--; if (B.buffs.reflectRounds === 0) B.buffs.reflect = 0; }
     if (e.guardRounds > 0) { e.guardRounds--; if (e.guardRounds === 0) e.guardPower = 0; }
     B.myFx = StatusFx.decayKinds(B.myFx, ['defdown', 'slow', 'weaken', 'atkup', 'defup', 'agiup', 'critup']);
     e.fx = StatusFx.decayKinds(e.fx, ['defdown', 'slow']);
@@ -1226,6 +1336,14 @@ const Battle = {
       this.pushFloat('enemy', `-${back}`, 'dmg');
       if (B.stats && B.stats.src) B.stats.src.thorns += back;
       text += `<br>【词缀·反伤】荆棘归鞘——${e.name} 反受 <b>${back}</b> 点伤害。`;
+    }
+    // v21 玄壁符·反伤
+    if ((B.buffs.reflectRounds || 0) > 0 && e.hp > 0 && p.hp > 0) {
+      const back = Math.max(1, Math.round(dmg * B.buffs.reflect / 100));
+      e.hp = Math.max(0, e.hp - back);
+      this.pushFloat('enemy', `-${back}`, 'dmg');
+      if (B.stats) { B.stats.out += back; if (B.stats.src) B.stats.src.skill += back; }
+      text += `<br>【玄壁符】玄光回震——${e.name} 反受 <b>${back}</b> 点伤害。`;
     }
     this.log(text, crit ? 'log-crit' : 'log-battle');
   },
@@ -1555,6 +1673,11 @@ const Battle = {
     if (bmOwn && bmLv >= 6 && !B.bmUsed.strike6) bmBtns.push(`<button class="btn btn-sm" data-action="bt-benming" data-k="strike6" ${B.busy ? 'disabled' : ''} title="2.5× 伤害并破防三成">◈ 锁魂一击</button>`);
     if (bmOwn && bmLv >= 9 && !B.bmUsed.strike9) bmBtns.push(`<button class="btn btn-sm btn-primary" data-action="bt-benming" data-k="strike9" ${B.busy ? 'disabled' : ''} title="4.0× 伤害并回复一成五气血">✦ 两世归一斩</button>`);
     const bmRow = bmBtns.length ? `<div class="bt-sub">${bmBtns.join('')}</div>` : '';
+    // v21 法宝技（身上任意法宝觉醒的随机战技，耗真元）
+    const fabaoGot = this.equippedFabaoSkill();
+    const fabaoRow = fabaoGot
+      ? `<div class="bt-sub"><button class="btn btn-sm" data-action="bt-fabao" ${(B.busy || (B.zhenyuan || 0) < (fabaoGot.sk.cost || 1)) ? 'disabled' : ''} title="${Utils.esc(fabaoGot.sk.desc)}（真元${fabaoGot.sk.cost}）">✦ 法宝技 · ${fabaoGot.sk.name}<span style="color:var(--text-faint)">（真元${fabaoGot.sk.cost}）</span></button></div>`
+      : '';
     const speedLabels = { 1: '×1', 2: '×2', 3: '极速' };
     const btns = [
       `<button class="btn" data-action="bt-attack" ${B.busy ? 'disabled' : ''}>普 攻</button>`,
@@ -1597,6 +1720,7 @@ const Battle = {
       ${sub}
       ${ultRow}
       ${bmRow}
+      ${fabaoRow}
       ${tameBtn}
       <div class="bt-actions" style="margin-top:8px">${btns}</div>
       <div class="bt-ctl">${ctlBtns}</div>

@@ -33,6 +33,13 @@ const Tribulation = {
   async run(bonus = 0) {
     const p = Game.player;
     const target = p.realmIdx + 1;
+    // v21 护脉丹/渡劫丹：一次性成算加成（服后即耗）
+    const tribAid = Utils.clamp((p.flags && p.flags.tribAid) || 0, 0, 30);
+    if (tribAid) {
+      p.flags.tribAid = 0;
+      bonus += tribAid;
+      Log.add(`丹力护脉——【${tribAid >= 20 ? '渡劫丹' : '护脉丹'}】药力融入护体真元，此次渡劫成算 +${tribAid}%！`, 'gain');
+    }
     Save.write('bak', Game.player);   // v6：冲关之前，自动备份至临时槽位，失利可回溯
     this.state = {
       target,

@@ -80,10 +80,16 @@ const Bag = {
   use(itemId) {
     const p = Game.player;
     const def = GameData.ITEMS[itemId];
-    if (!def || def.type !== 'pill' || !this.count(itemId)) return;
-    this.removeItem(itemId, 1);
-    Pill.apply(p, def);
-    Game.afterAction();
+    if (!def || !this.count(itemId)) return;
+    if (def.type === 'pill') {
+      this.removeItem(itemId, 1);
+      Pill.apply(p, def);
+      Game.afterAction();
+    } else if (def.type === 'map') {
+      DigSys.dig(itemId);   // v21 藏宝图：寻宝
+    } else if (def.type === 'egg') {
+      BeastSys.hatch(itemId);   // v21 兽蛋：孵化
+    }
   },
   /* ---------- v4 一键减负：低阶丹药批量服用 ---------- */
   /** 战斗外一键服用凡级回血/回灵丹（疗伤丹 / 回灵丹），补满状态自动停止；
@@ -272,6 +278,7 @@ const Pill = {
     if (effect.hpPct) { p.hp = Math.min(st.maxHp, p.hp + Math.round(st.maxHp * effect.hpPct / 100)); effectText.push(`气血 +${effect.hpPct}%`); }
     if (effect.mpPct) { p.mp = Math.min(st.maxMp, p.mp + Math.round(st.maxMp * effect.mpPct / 100)); effectText.push(`灵力 +${effect.mpPct}%`); }
     if (effect.curePoison) { p.poison = Math.max(0, p.poison - effect.curePoison); effectText.push(`丹毒 -${effect.curePoison}`); }
+    if (effect.tribAid) { p.flags = p.flags || {}; p.flags.tribAid = (p.flags.tribAid || 0) + effect.tribAid; effectText.push(`下次渡劫成算 +${effect.tribAid}%`); }   // v21 护脉/渡劫丹
     if (effect.insight) { p.insight = Math.min(100, p.insight + effect.insight); effectText.push(`突破感悟 +${effect.insight}`); }
     if (effect.stat) {
       const keys = Object.keys(p.attrs).filter(k => p.attrs[k] < 10);

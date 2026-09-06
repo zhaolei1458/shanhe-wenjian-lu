@@ -114,7 +114,8 @@ const ForgeSys = {
   },
   /** 已穿戴装备触发的套装加成（Stat.compute 调用） */
   /* ---------- v19 词缀系统（v18 数据首次实装：实例词缀 + 洗练 + 战斗特效） ---------- */
-  /** 为装备掷词缀（前缀/后缀各至多一条，品阶越高概率越高） */
+  /** 为装备掷词缀（前缀/后缀各至多一条，品阶越高概率越高）；
+   *  v21 法宝技：法宝随品阶有几率觉醒一式随机战技（同词缀懒生成，首穿落定）。 */
   rollAffixes(def) {
     const out = {};
     if (!def || !def.bonus) return out;
@@ -128,7 +129,17 @@ const ForgeSys = {
       const cands = pool.suffix.filter(a => a.slot === 'any' || a.slot === def.slot);
       if (cands.length) out.suffix = Utils.pick(cands).id;
     }
+    // v21 法宝技（所有槽位皆可觉醒，品阶越高几率越大）
+    const fPool = (GameData.FABAO_SKILLS || []).filter(s => (s.grade || 1) <= Math.max(1, grade));
+    if (fPool.length && Utils.chance(Utils.clamp(15 + grade * 9, 0, 70))) {
+      out.fskill = Utils.pick(fPool).id;
+    }
     return out;
+  },
+  /** v21 装备实例的法宝技（随 affixes 一同懒生成落定） */
+  fabaoSkillOf(inst) {
+    const A = (inst && typeof inst === 'object' && inst.affixes) || {};
+    return A.fskill ? (GameData.FABAO_SKILLS || []).find(s => s.id === A.fskill) || null : null;
   },
   affixDef(part, id) { return ((GameData.BALANCE.AFFIXES || {})[part] || []).find(a => a.id === id) || null; },
   /** 装备实例的词缀（旧档首次读取时补掷并写回，即首次装备后落定） */
@@ -140,14 +151,16 @@ const ForgeSys = {
     if (!inst.affixes) inst.affixes = this.rollAffixes(def);
     return inst.affixes;
   },
-  /** 词缀显示（◆前缀 ◈后缀） */
+  /** 词缀显示（◆前缀 ◈后缀 ✦法宝技） */
   affixText(inst) {
     const A = (inst && inst.affixes) || {};
     const parts = [];
     const pre = A.prefix && this.affixDef('prefix', A.prefix);
     const suf = A.suffix && this.affixDef('suffix', A.suffix);
+    const fsk = this.fabaoSkillOf(inst);
     if (pre) parts.push(`<span class="affix-p" title="${Utils.esc(pre.desc)}">◆${pre.name}</span>`);
     if (suf) parts.push(`<span class="affix-s" title="${Utils.esc(suf.desc)}">◈${suf.name}</span>`);
+    if (fsk) parts.push(`<span class="affix-p" title="${Utils.esc(fsk.desc)}（真元${fsk.cost}）">✦${fsk.name}</span>`);
     return parts.join(' ');
   },
   /** 词缀前缀加成（equipBonus 并入） */
@@ -188,11 +201,12 @@ const ForgeSys = {
     const part = await UI.popup({
       title: `词缀洗练 · ${def.name}`,
       html: `当前词缀：${this.affixText(inst) || '<span style="color:var(--text-faint)">无</span>'}<br>
-        洗练将重掷词缀（前缀/后缀择其一），结果随机，不问因果。<br>
+        洗练将重掷词缀（前缀/后缀/法宝技择其一），结果随机，不问因果。<br>
         需灵石 <span class="hl">${Utils.fmtNum(cost)}</span> 与【玄铁矿】×${needOre}。`,
       options: [
         { text: '洗练前缀 ◆', value: 'prefix', primary: true },
         { text: '洗练后缀 ◈', value: 'suffix' },
+        { text: '祭炼法宝技 ✦', value: 'fskill' },
         { text: '作罢', value: null },
       ],
     });
@@ -200,12 +214,24 @@ const ForgeSys = {
     if (Bag.count('m_xuantie') < needOre) { UI.toast('玄铁矿不足'); return; }
     if (!Bag.spendStones(cost)) { UI.toast('灵石不足'); return; }
     Bag.removeItem('m_xuantie', needOre);
-    const pool = GameData.BALANCE.AFFIXES[part].filter(a => a.slot === 'any' || a.slot === def.slot);
-    if (!pool.length) { UI.toast('此槽位无可用词缀'); Game.afterAction(); return; }
     inst.affixes = inst.affixes || {};
-    inst.affixes[part] = Utils.pick(pool).id;
-    const d = this.affixDef(part, inst.affixes[part]);
-    Log.add(`你以玄铁重淬【${def.name}】——${part === 'prefix' ? '前缀' : '后缀'}词缀化为【<b>${d.name}</b>】：${d.desc}`, part === 'prefix' ? 'gain' : 'system');
+    let label = '', cls = 'gain';
+    if (part === 'fskill') {
+      const grade = def.grade || 0;
+      const fPool = (GameData.FABAO_SKILLS || []).filter(s => (s.grade || 1) <= Math.max(1, grade));
+      if (!fPool.length) { Bag.addItem('m_xuantie', needOre); Bag.addStones(cost); UI.toast('此法宝无法觉醒战技'); Game.afterAction(); return; }
+      inst.affixes.fskill = Utils.pick(fPool).id;
+      const d = this.fabaoSkillOf(inst);
+      label = `法宝技觉醒为【<b>${d.name}</b>】：${d.desc}（真元 ${d.cost}）`;
+      cls = 'realm';
+    } else {
+      const pool = GameData.BALANCE.AFFIXES[part].filter(a => a.slot === 'any' || a.slot === def.slot);
+      if (!pool.length) { Bag.addItem('m_xuantie', needOre); Bag.addStones(cost); UI.toast('此槽位无可用词缀'); Game.afterAction(); return; }
+      inst.affixes[part] = Utils.pick(pool).id;
+      const d = this.affixDef(part, inst.affixes[part]);
+      label = `${part === 'prefix' ? '前缀' : '后缀'}词缀化为【<b>${d.name}</b>】：${d.desc}`;
+    }
+    Log.add(`你以玄铁重淬【${def.name}】——${label}`, cls);
     Ambience.sfx('forge');
     Game.afterAction();
   },

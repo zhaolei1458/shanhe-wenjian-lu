@@ -124,7 +124,7 @@ const BeastSys = {
     B.enemy.hp = Math.max(0, B.enemy.hp - dmg);
     B.hitShake = true;
     if (B.stats) { B.stats.out += dmg; if (B.stats.src) B.stats.src.beast += dmg; }   // v20 伤害构成统计
-    B.pushFloat('enemy', `-${dmg}`, 'dmg');
+    Battle.pushFloat('enemy', `-${dmg}`, 'dmg');
     // v18：灵兽技能实效化——施加真实技能效果（毒/流血/减益等）；v20 支持双技
     let skillNote = '';
     for (const sk of (b.skills || []).slice(0, 2)) {
@@ -133,7 +133,7 @@ const BeastSys = {
         skillNote += `【${sk.name}】`;
       }
     }
-    B.log(`${skillNote}你的灵兽 <b>${b.name}</b> 亦张牙舞爪扑上助战——造成 <b>${dmg}</b> 点伤害！`, 'log-gain');
+    Battle.log(`${skillNote}你的灵兽 <b>${b.name}</b> 亦张牙舞爪扑上助战——造成 <b>${dmg}</b> 点伤害！`, 'log-gain');
     Battle.render();
     await Battle.wait(360);
     return B.enemy.hp <= 0;
@@ -171,6 +171,74 @@ const BeastSys = {
     }
     Game.afterAction();
   },
+  /** v21 兽粮/珍馐喂养：口粮入腹，妖气渐长 */
+  feedFood(uid) {
+    const p = Game.player;
+    const b = p.beasts.list.find(x => x.uid === uid);
+    if (!b) return;
+    const rich = Bag.count('m_zhenxiu') > 0;
+    const food = rich ? 'm_zhenxiu' : 'm_shouliang';
+    if (Bag.count(food) < 1) { UI.toast('需【兽粮】或【灵兽珍馐】'); return; }
+    Bag.removeItem(food, 1);
+    const exp = rich ? 400 : 120;
+    b.exp += exp;
+    let up = false;
+    while (b.level < 10 && b.exp >= b.level * 400) { b.exp -= b.level * 400; b.level++; up = true; }
+    if (up) {
+      let extra = '';
+      if (b.level === 5 && (!b.skills || !b.skills.length) && this.SPECIES_SKILLS[b.species]) {
+        b.skills = [{ ...this.SPECIES_SKILLS[b.species] }];
+        extra = `，并领悟天生技【${b.skills[0].name}】`;
+      } else if (b.level === 9 && b.skills && b.skills.length && b.skills[0].pct) {
+        b.skills[0].pct = Math.round(b.skills[0].pct * 1.5 * 10) / 10;
+        extra = `，天生技【${b.skills[0].name}】威力精进`;
+      }
+      if (b.level >= 10 && (!b.skills || b.skills.length < 2) && this.SPECIES_SKILLS2[b.species]) {
+        b.skills = b.skills || [];
+        b.skills.push({ ...this.SPECIES_SKILLS2[b.species] });
+        extra = `，并领悟第二天生技【${b.skills[b.skills.length - 1].name}】！`;
+      }
+      Log.add(`【${b.name}】吃完${rich ? '珍馐' : '兽粮'}，满足地眯起眼——灵兽升至 <b>${b.level} 阶</b>！${extra || ''}`, 'gain');
+      UI.toast(`${b.name} 升至 ${b.level} 阶`);
+    } else {
+      Log.add(`【${b.name}】吃完${rich ? '珍馐' : '兽粮'}，尾巴摇成了风车（灵兽经验 +${exp}）。`, 'info');
+    }
+    Game.afterAction();
+  },
+  /** v21 兽蛋孵化：蛋出幼兽（兽栏满则拒绝） */
+  async hatch(eggId) {
+    const p = Game.player;
+    const def = GameData.ITEMS[eggId];
+    if (!def || def.type !== 'egg' || !Bag.count(eggId)) return;
+    const mid = def.hatchTo;
+    const mon = GameData.MONSTERS[mid];
+    if (!mon) { UI.toast('此蛋似乎孕育不出什么'); return; }
+    if (p.beasts.list.length >= this.maxSlots(p)) { UI.toast(`兽栏已满（${this.maxSlots(p)} 位），无处置蛋`); return; }
+    const ok = await UI.popup({
+      title: `孵化 · ${def.name}`,
+      html: `你以灵气温养此蛋，壳上纹路渐渐亮起——幼崽即将破壳。<br>孵化将得灵兽「<b>${mon.name}</b>」（${mon.species === 'element' ? '灵体' : mon.species === 'snake' ? '蛇族' : mon.species === 'plant' ? '草木' : '兽族'}·战力 ${mon.power}）。`,
+      options: [{ text: '孵 化', value: true, primary: true }, { text: '再等等', value: false }],
+    });
+    if (!ok) return;
+    if (p.beasts.list.length >= this.maxSlots(p)) { UI.toast('兽栏已满，无处置蛋'); return; }
+    Bag.removeItem(eggId, 1);
+    Time.add(1);
+    const beast = {
+      uid: p.beasts.nextId || 1,
+      id: mid, name: mon.name, species: mon.species, power: mon.power,
+      level: 1, exp: 0,
+      skills: this.SPECIES_SKILLS[mon.species] ? [{ ...this.SPECIES_SKILLS[mon.species] }] : [],
+      bond: 20,   // 孵化幼崽天生亲昵
+    };
+    p.beasts.nextId = (p.beasts.nextId || 1) + 1;
+    p.beasts.list.push(beast);
+    if (!p.beasts.active) p.beasts.active = beast.uid;
+    Ambience.sfx('tame');
+    Log.add(`壳裂声脆，幼崽探头——<b>${mon.name}</b> 睁眼看见的第一个人是你，欢快地蹭上你的手腕。（兽栏 ${p.beasts.list.length}/${this.maxSlots(p)}）`, 'gain');
+    UI.announce(`✦ 破壳 · ${mon.name}`, 'gold');
+    Meta.see('monster', mid);
+    Game.afterAction();
+  },
   setActive(uid) {
     const p = Game.player;
     p.beasts.active = p.beasts.active === uid ? null : uid;
@@ -187,7 +255,7 @@ const BeastSys = {
     Log.add(b ? `<b>${b.name}</b> 化作一道灵光护持你身——被动以五成效力相佐。` : '副战灵兽归栏。', 'info');
     Game.afterAction();
   },
-  /** v19 灵兽进化：十阶圆满 + 妖兽内丹×5，蜕凡成王——被动 ×1.4、协战 ×1.3 */
+  /** v19 灵兽进化：十阶圆满 + 妖兽内丹×5 或 万灵果×3（v21 双路径），蜕凡成王——被动 ×1.4、协战 ×1.3 */
   async evolve(uid) {
     const p = Game.player;
     const b = p.beasts.list.find(x => x.uid === uid);
@@ -195,19 +263,27 @@ const BeastSys = {
     if (b.evolved) { UI.toast('它已完成蜕变'); return; }
     if (b.level < 10) { UI.toast('需修至十阶圆满方可蜕变'); return; }
     const cost = Math.round(8000 * Math.pow(2.2, Math.min(5, p.realmIdx)));
+    const hasNeidan = Bag.count('m_neidan') >= 5;
+    const hasLingguo = Bag.count('m_lingguo') >= 3;
     const ok = await UI.popup({
       title: `灵兽蜕变 · ${b.name}`,
-      html: `${b.name} 已至十阶圆满，妖气内蕴——以五枚【妖兽内丹】引其蜕凡成王。<br>蜕变后：<b>战力 +5、被动 ×1.4、协战 ×1.3</b>，名称冠以「王」号。<br>需灵石 <span class="hl">${Utils.fmtNum(cost)}</span> 与【妖兽内丹】×5（持有 ${Bag.count('m_neidan')}）。`,
-      options: [{ text: '引 其 蜕 变', value: true, primary: true }, { text: '再等等', value: false }],
+      html: `${b.name} 已至十阶圆满，妖气内蕴——引其蜕凡成王。<br>蜕变后：<b>战力 +5、被动 ×1.4、协战 ×1.3</b>，名称冠以「王」号。<br>需灵石 <span class="hl">${Utils.fmtNum(cost)}</span> 与【妖兽内丹】×5（持有 ${Bag.count('m_neidan')}）或【万灵果】×3（持有 ${Bag.count('m_lingguo')}）。`,
+      options: [
+        { text: '内丹引变', value: 'neidan', primary: hasNeidan || !hasLingguo },
+        { text: '灵果引变', value: 'lingguo', primary: !hasNeidan && hasLingguo },
+        { text: '再等等', value: null },
+      ],
     });
     if (!ok) return;
-    if (Bag.count('m_neidan') < 5) { UI.toast('妖兽内丹不足'); return; }
+    const needItem = ok === 'neidan' ? 'm_neidan' : 'm_lingguo';
+    const needQty = ok === 'neidan' ? 5 : 3;
+    if (Bag.count(needItem) < needQty) { UI.toast(`${GameData.ITEMS[needItem].name}不足（需 ×${needQty}）`); return; }
     if (!Bag.spendStones(cost)) { UI.toast('灵石不足'); return; }
-    Bag.removeItem('m_neidan', 5);
+    Bag.removeItem(needItem, needQty);
     b.evolved = true;
     b.power = Utils.clamp(b.power + 5, 0, 60);
     if (!/王$/.test(b.name)) b.name = b.name + '王';
-    Log.add(`<b>妖光冲霄——${b.name} 蜕凡成王！</b>战力 +5，被动 ×1.4，协战 ×1.3。`, 'realm');
+    Log.add(`<b>妖光冲霄——${b.name} 蜕凡成王！</b>战力 +5，被动 ×1.4，协战 ×1.3。（以${GameData.ITEMS[needItem].name} ×${needQty}引变）`, 'realm');
     UI.announce(`✦ 灵兽蜕变 · ${b.name} ✦`, 'gold');
     Story.chron(`灵兽「${b.name}」蜕凡成王`);
     Ambience.sfx('evolve');

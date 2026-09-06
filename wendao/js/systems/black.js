@@ -13,6 +13,10 @@ const BlackSys = {
     { id: 'tal_bingpo', w: 10 }, { id: 'tal_posha', w: 8 }, { id: 'pill_xuanling', w: 10 },
     { id: 's_cx_gou', w: 5 }, { id: 's_xt_pei', w: 5 }, { id: 'gf_feixian', w: 5 },
     { id: 'm_bingpo', w: 12 }, { id: 'seed_xingchen', w: 4 }, { id: 'm_xuecan', w: 10 },
+    /* ---- v21 挖宝与六系通道 ---- */
+    { id: 'map_gu', w: 8 }, { id: 'map_xian', w: 3 }, { id: 'm_zhenxiu', w: 8 },
+    { id: 'm_lingguo', w: 6 }, { id: 'm_gongfa', w: 6 }, { id: 'tal_shaying', w: 4 },
+    { id: 'egg_fengbao', w: 4 }, { id: 'pill_humai', w: 6 },
   ],
   /** 暗巷货（确定性哈希）：今日四件货物 */
   goods(p) {

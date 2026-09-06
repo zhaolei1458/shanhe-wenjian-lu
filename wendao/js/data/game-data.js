@@ -153,6 +153,11 @@ const GameData = {
         { id: 'guixi', name: '龟息', slot: 'armor', bonus: { hp: 300 }, desc: '气血+300' },
         { id: 'tongming', name: '通明', slot: 'accessory', bonus: { crit: 3, dodge: 3 }, desc: '暴击+3%，闪避+3%' },
         { id: 'juling', name: '聚灵', slot: 'any', bonus: { cult: 4 }, desc: '修炼效率+4%' },
+        /* ---- v21 词缀扩池 ---- */
+        { id: 'liehun', name: '裂魂', slot: 'weapon', bonus: { atkPct: 10, crit: 2 }, desc: '攻击+10%，暴击+2%' },
+        { id: 'buyu',   name: '不渝', slot: 'armor', bonus: { defPct: 6, hpPct: 6 }, desc: '防御+6%，气血+6%' },
+        { id: 'lingxi', name: '灵犀', slot: 'accessory', bonus: { spdPct: 6, cult: 4 }, desc: '身法+6%，修炼效率+4%' },
+        { id: 'posui',  name: '破垒', slot: 'any', bonus: { atk: 25, def: 15 }, desc: '攻击+25，防御+15' },
       ],
       suffix: [
         { id: 'leech', name: '吸血', slot: 'weapon', desc: '攻击时回复10%伤害的气血', onHit: { leech: 0.1 } },
@@ -166,6 +171,10 @@ const GameData = {
         { id: 'jingji', name: '荆棘', slot: 'armor', desc: '受击时反弹22%伤害', onHurt: { thorns: 0.22 } },
         { id: 'ningqi', name: '凝气', slot: 'accessory', desc: '每回合回复8%灵力', onTurn: { mpPct: 8 } },
         { id: 'lianshan', name: '连山', slot: 'weapon', desc: '连击上限+3', onHit: { comboUp: 3 } },
+        /* ---- v21 词缀扩池（沿用既有战斗特效通道） ---- */
+        { id: 'zhenyu',   name: '震狱', slot: 'armor', desc: '受击时反弹30%伤害', onHurt: { thorns: 0.3 } },
+        { id: 'baoguang', name: '宝光', slot: 'armor', desc: '战斗开场获得金光护体（减伤15%，两回合）', onStart: { shield: 0.15 } },
+        { id: 'juesha',   name: '绝杀', slot: 'weapon', desc: '对血量低于20%的敌人伤害+35%', onHit: { execute: 0.35 } },
       ],
     },
     /* ---------- v19 数值说明书（平衡设计意图） ----------
@@ -352,6 +361,60 @@ const GameData = {
     m_xiancui:  { name: '仙灵翠',     type: 'material', tier: 4, price: 120000, desc: '灵墟仙泽灵气凝结的翡翠，内蕴仙道法则。' },
     m_leijing:  { name: '雷晶核',     type: 'material', tier: 4, price: 150000, desc: '九霄雷狱中雷兽体内凝结的雷晶，雷法至宝。' },
     seed_xianling: { name: '仙灵种',   type: 'seed', grade: 5, price: 80000, crop: 'm_xiancui', days: 80, desc: '播入灵田，八十日可收【仙灵翠】。' },
+    /* ---- v21 六系增强：新符箓（疗伤 / 蚀毒 / 玄壁 / 煞影 / 天雷） ---- */
+    tal_liaoshang:{ name: '疗伤符', type: 'talisman', grade: 1, price: 55, ecoPrice: true, desc: '灵光入体，伤处合拢——回复自身三成五气血（战斗中可用）。', fkind: 'heal', power: 35 },
+    tal_shidu:    { name: '蚀毒符', type: 'talisman', grade: 2, price: 85, ecoPrice: true, desc: '符毒无色无声——敌人中毒，每回合损血，持续三回合（战斗中可用，必中）。', fkind: 'poison', pct: 3.5, rounds: 3 },
+    tal_xuanbi:   { name: '玄壁符', type: 'talisman', grade: 3, price: 150, ecoPrice: true, desc: '玄壁环身——三回合内受击反弹三成伤害（战斗中可用）。', fkind: 'reflect', power: 30, rounds: 3 },
+    tal_shaying:  { name: '煞影符', type: 'talisman', grade: 4, price: 320, ecoPrice: true, power: 5.5, desc: '以煞入符，符出影随（战斗中造成约5.5倍攻击伤害，符光必中）。', fkind: 'damage' },
+    tal_tianlei:  { name: '天雷符', type: 'talisman', grade: 5, price: 700, ecoPrice: true, power: 6.5, stunChance: 40, desc: '符成之日雷云压顶——造成约6.5倍攻击伤害，四成几率将敌麻痹一回合（战斗中可用，必中）。', fkind: 'damage' },
+    /* ---- v21 藏宝图（挖宝玩法：背包「寻宝」使用，按 digTier 分三档奖池） ---- */
+    map_cangbao:  { name: '残破藏宝图', type: 'map', grade: 2, price: 200, digTier: 1, desc: '前人埋藏之所的指路图，墨迹残缺。背包中「寻宝」可按图挖掘，所得以灵材灵石为主。' },
+    map_gu:       { name: '古修遗图',   type: 'map', grade: 3, price: 900, digTier: 2, desc: '古修洞府遗图，山河纹路间灵光隐现。挖掘可得词缀法宝、功法残页、灵兽蛋等物。' },
+    map_xian:     { name: '仙家残图',   type: 'map', grade: 5, price: 3000, digTier: 3, desc: '仙家遗宝之图，图角有仙篆残痕。挖掘或得独名法宝、高阶功法、上古凶兽蛋——亦或惊动守宝之物。' },
+    /* ---- v21 灵兽蛋（背包「孵化」可得灵兽幼崽） ---- */
+    egg_fengbao:  { name: '风影豹蛋',   type: 'egg', grade: 2, price: 1500, hatchTo: 'm_fengbao', desc: '风影豹之卵，壳上纹路如风过留痕。孵化后可得灵兽「风影豹」幼崽。' },
+    egg_bingchan: { name: '冰蟾玉卵',   type: 'egg', grade: 2, price: 1600, hatchTo: 'm_hanshi', desc: '寒潭冰蟾之卵，触之生寒而不冻。孵化后可得灵兽「寒潭冰蟾」幼崽。' },
+    egg_tengyao:  { name: '藤妖幼种',   type: 'egg', grade: 2, price: 1500, hatchTo: 'm_tengyao', desc: '千年藤妖的幼种，微微搏动如心跳。孵化后可得灵兽「千年藤妖」幼崽。' },
+    egg_yaohu:    { name: '九尾妖狐蛋', type: 'egg', grade: 3, price: 3600, hatchTo: 'm_yaohu', desc: '九尾妖狐之卵，壳映九道弧光。孵化后可得灵兽「九尾妖狐」幼崽。' },
+    egg_gushou:   { name: '上古凶兽蛋', type: 'egg', grade: 4, price: 9000, hatchTo: 'm_heijiao', desc: '上古凶兽遗卵，黑蛟气息未散，寻常修士抱之股栗。孵化后可得灵兽「黑蛟」幼崽。' },
+    /* ---- v21 灵兽口粮 / 灵果 / 功法残页 ---- */
+    m_shouliang:  { name: '兽粮',       type: 'material', tier: 1, price: 50,  desc: '灵谷掺妖血粉所制，灵兽爱食。喂食灵兽经验 +120。' },
+    m_zhenxiu:    { name: '灵兽珍馐',   type: 'material', tier: 2, price: 450, desc: '以灵果蜜露炼成的兽食珍品。喂食灵兽经验 +400。' },
+    m_lingguo:    { name: '万灵果',     type: 'material', tier: 3, price: 4800, desc: '聚万灵之气所凝的异果。灵兽蜕变时可以灵果 ×3 替代妖兽内丹 ×5。' },
+    m_gongfa:     { name: '功法残页',   type: 'material', tier: 3, price: 2800, desc: '前人手抄功法的散佚残页。集齐三页可在百艺坊「参悟」，拼合成一部完整功法。' },
+    /* ---- v21 新丹药（生肌 / 凝神 / 战意 / 护脉 / 渡劫 / 碧血） ---- */
+    pill_shengui:  { name: '生肌丹',   type: 'pill', grade: 1, price: 150,   desc: '生肌续皮，气血尽复（战斗中可用）。', use: { hpPct: 100 }, poison: 4, battle: true },
+    pill_ningshen: { name: '凝神丹',   type: 'pill', grade: 2, price: 900,   desc: '凝神静气，灵力尽复，兼得四百修为（战斗中可用）。', use: { mpPct: 100, exp: 400 }, poison: 14, battle: true },
+    pill_zhanyi:   { name: '战意丹',   type: 'pill', grade: 2, price: 1100,  desc: '战意如潮——攻击 +20%、暴击 +8%，持续四回合（战斗中可用）。', buff: { atkPct: 20, crit: 8, rounds: 4 }, poison: 10, battle: true },
+    pill_humai:    { name: '护脉丹',   type: 'pill', grade: 2, price: 1500,  desc: '护脉固元——下一次渡劫成算 +10%（一丹一劫，服后即耗）。', use: { tribAid: 10 }, poison: 0 },
+    pill_dujie:    { name: '渡劫丹',   type: 'pill', grade: 3, price: 5000,  desc: '渡劫至宝——下一次渡劫成算 +20%（一丹一劫，服后即耗）。', use: { tribAid: 20 }, poison: 5 },
+    pill_bixue:    { name: '碧血丹',   type: 'pill', grade: 3, price: 5000,  desc: '以碧血入药——气血尽复、灵力复五成，并涤净诸般负面（战斗中可用）。', use: { hpPct: 100, mpPct: 50, purge: 1 }, poison: 20, battle: true },
+    /* ---- v21 新功法（八部：三档 × 攻防辅） ---- */
+    gf_fenglei:  { name: '风雷剑诀',     type: 'gongfa', gtype: 'attack',  grade: 1, price: 2600,  desc: '剑挟风雷，其势莫当。', bonus: { atkPct: [7, 3] }, skill: { name: '风雷十三剑', kind: 'damage', power: 2.0, mp: 16, desc: '风雷交击，连绵十三剑' } },
+    gf_guiyuan:  { name: '归元心法',     type: 'gongfa', gtype: 'support', grade: 2, price: 9500,  desc: '万法归元，灵力绵长。', bonus: { cult: [9, 4], mpPct: [8, 4] } },
+    gf_shanhe:   { name: '山河镇狱功',   type: 'gongfa', gtype: 'defense', grade: 2, price: 9800,  desc: '以山河为镇、狱门为关的守御大功。', bonus: { defPct: [10, 4], hpPct: [8, 3] }, skill: { name: '山镇狱门', kind: 'buffDef', power: 100, mp: 18, rounds: 2, desc: '两回合内稳如山河' } },
+    gf_lihuo:    { name: '离火焚天诀',   type: 'gongfa', gtype: 'attack',  grade: 3, price: 0,     desc: '离火入髓，出手焚天。', bonus: { atkPct: [12, 5], crit: [2, 1] }, skill: { name: '焚天之焰', kind: 'damage', power: 2.9, mp: 24, desc: '离火滔天，焚尽敌身' } },
+    gf_xuangui:  { name: '玄龟镇海诀',   type: 'gongfa', gtype: 'defense', grade: 3, price: 0,     desc: '龟息镇海，不动如山。', bonus: { hpPct: [13, 6], defPct: [10, 4], block: [4, 2] } },
+    gf_zhouyu:   { name: '周天御风步',   type: 'gongfa', gtype: 'support', grade: 3, price: 0,     desc: '步踏周天，御风而行。', bonus: { spdPct: [11, 5], dodge: [4, 2] }, skill: { name: '御风无迹', kind: 'buffDodge', power: 35, mp: 12, rounds: 2, desc: '两回合内身形无迹可寻' } },
+    gf_taiji:    { name: '太极衍图',     type: 'gongfa', gtype: 'attack',  grade: 4, price: 0,     desc: '阴阳互衍，四两拨千斤。', bonus: { atkPct: [15, 7], crit: [3, 1.5] }, skill: { name: '两仪归一', kind: 'damage', power: 3.3, mp: 27, desc: '阴阳逆转，归于一击' } },
+    gf_wanxiang: { name: '万象归一经',   type: 'gongfa', gtype: 'support', grade: 5, price: 0,     desc: '万象归一，道韵天成。', bonus: { cult: [18, 7], hpPct: [12, 5], mpPct: [12, 5], atkPct: [6, 3] } },
+    /* ---- v21 独名法宝（八件：三档分布，可随机祭出法宝技） ---- */
+    w_hanxing:   { name: '寒星杖',     type: 'artifact', slot: 'weapon',    grade: 2, price: 10500,  desc: '杖头寒星一点，触之霜华满袖。', bonus: { atk: 58, mp: 80 } },
+    a_yunwen:    { name: '云纹锦袍',   type: 'artifact', slot: 'armor',     grade: 2, price: 9800,   desc: '云纹暗绣，轻若云絮。', bonus: { def: 38, hp: 160, spd: 12 } },
+    z_hunyuan:   { name: '混元铃',     type: 'artifact', slot: 'accessory', grade: 3, price: 0,      desc: '铃声清越，混元一气，攻防俱得滋养。', bonus: { atkPct: 6, defPct: 6, cult: 5 } },
+    w_chijiao:   { name: '赤蛟鞭',     type: 'artifact', slot: 'weapon',    grade: 3, price: 0,      desc: '赤蛟筋鞣制的长鞭，鞭梢犹带龙火。', bonus: { atk: 150, crit: 3 } },
+    a_xingyue:   { name: '星月宝衣',   type: 'artifact', slot: 'armor',     grade: 4, price: 0,      desc: '以星月之光织就的宝衣，夜行时隐有辉光。', bonus: { def: 190, hp: 900, hpPct: 8 } },
+    z_fengyun:   { name: '风云令',     type: 'artifact', slot: 'accessory', grade: 4, price: 0,      desc: '持令者如携风云——身法与气运俱增。', bonus: { spdPct: 12, dodge: 6, luck: 2 } },
+    w_tianji:    { name: '天玑剑',     type: 'artifact', slot: 'weapon',    grade: 5, price: 0,      desc: '北斗天玑之气凝成的长剑，剑光所指星河为之低垂。', bonus: { atk: 380, atkPct: 16, crit: 6 } },
+    z_daoyun:    { name: '道蕴珠',     type: 'artifact', slot: 'accessory', grade: 5, price: 0,      desc: '大道韵律凝成的宝珠，持之百脉皆通。', bonus: { atkPct: 8, defPct: 8, hpPct: 8, cult: 10 } },
+    /* ---- v21 磐石套装（守御线，炼器可得） ---- */
+    s_ps_jian:   { name: '磐石重剑',   type: 'artifact', slot: 'weapon',    grade: 4, price: 0, set: 'panshi', desc: '磐石套装之一：剑如山岳，一剑镇关。', bonus: { atk: 200, def: 50 } },
+    s_ps_jia:    { name: '磐石重铠',   type: 'artifact', slot: 'armor',     grade: 4, price: 0, set: 'panshi', desc: '磐石套装之二：铠如磐石，岿然不动。', bonus: { def: 170, hp: 700, block: 5 } },
+    s_ps_huan:   { name: '磐石指环',   type: 'artifact', slot: 'accessory', grade: 4, price: 0, set: 'panshi', desc: '磐石套装之三：环扣如岩，心定神凝。', bonus: { def: 60, hp: 350, hpPct: 5 } },
+    /* ---- v21 青莲套装（均衡线，炼器可得） ---- */
+    s_ql_jian:   { name: '青莲剑',     type: 'artifact', slot: 'weapon',    grade: 4, price: 0, set: 'qinglian', desc: '青莲套装之一：剑绽青莲，步步生华。', bonus: { atk: 190, cult: 4 } },
+    s_ql_yi:     { name: '青莲宝衣',   type: 'artifact', slot: 'armor',     grade: 4, price: 0, set: 'qinglian', desc: '青莲套装之二：衣染莲华，水火不侵。', bonus: { def: 130, hp: 600, spd: 20 } },
+    s_ql_pei:    { name: '青莲玉佩',   type: 'artifact', slot: 'accessory', grade: 4, price: 0, set: 'qinglian', desc: '青莲套装之三：佩鸣莲音，气脉自通。', bonus: { atk: 40, def: 40, hpPct: 6, cult: 3 } },
   },
 
   /** 按档次取材料列表 */
@@ -549,7 +612,11 @@ const GameData = {
     { item: 'z_xingpan', minRealm: 2 },
     { item: 'gf_tuna', minRealm: 0 }, { item: 'gf_canghai', minRealm: 0 }, { item: 'gf_tiebu', minRealm: 0 },
     { item: 'gf_lieyang', minRealm: 1 }, { item: 'gf_xuantian', minRealm: 1 }, { item: 'gf_jifeng', minRealm: 1 }, { item: 'gf_tiangang', minRealm: 2 },
+    { item: 'gf_fenglei', minRealm: 1 }, { item: 'gf_guiyuan', minRealm: 2 }, { item: 'gf_shanhe', minRealm: 2 },
     { item: 'm_lingcao', minRealm: 0 }, { item: 'm_xuantie', minRealm: 0 },
+    { item: 'm_shouliang', minRealm: 0 }, { item: 'm_zhenxiu', minRealm: 2 },
+    { item: 'map_cangbao', minRealm: 0 }, { item: 'map_gu', minRealm: 2 },
+    { item: 'pill_shengui', minRealm: 1 }, { item: 'pill_humai', minRealm: 2 }, { item: 'pill_dujie', minRealm: 3 },
     { item: 'seed_lingcao', minRealm: 1 }, { item: 'seed_lingzhi', minRealm: 1 }, { item: 'seed_bingpo', minRealm: 2 },
     { item: 'seed_xuelian', minRealm: 3 }, { item: 'seed_lianhun', minRealm: 3 },
   ],
@@ -561,7 +628,23 @@ const GameData = {
     /* ---- v19 新增套装 ---- */
     xuehe:    { name: '血河套装', pieces: ['s_hj_sha', 's_hj_pao', 's_hj_ling'], bonus: { atkPct: 12, crit: 4 }, text: '血河遗锋：攻击 +12%，暴击 +4%' },
     xianyuan: { name: '仙缘套装', pieces: ['s_xy_jian', 's_xy_ling', 's_xy_huan'], bonus: { atkPct: 10, defPct: 10, hpPct: 10 }, text: '仙缘天成：攻击、防御、气血俱 +10%' },
+    /* ---- v21 新增套装 ---- */
+    panshi:   { name: '磐石套装', pieces: ['s_ps_jian', 's_ps_jia', 's_ps_huan'], bonus: { defPct: 12, hpPct: 12, block: 5 }, text: '不动如山：防御 +12%，气血 +12%，格挡 +5%' },
+    qinglian: { name: '青莲套装', pieces: ['s_ql_jian', 's_ql_yi', 's_ql_pei'], bonus: { atkPct: 8, cult: 8, spdPct: 6 }, text: '步步生莲：攻击 +8%，修炼效率 +8%，身法 +6%' },
   },
+
+  /* ---------- v21 法宝技（随机祭出型战技，参考装备词缀产线：首穿落定、洗练可重掷） ----------
+   * kind: capture 收摄（低血敌直接摄入炼化）/ damage 伤害（可附带 fx）/ fx 控制 Shocking / shield 护体 / drain 噬取
+   * cost: 真元消耗；grade 决定可出现的法宝品阶下限。 */
+  FABAO_SKILLS: [
+    { id: 'fsshou',  name: '收摄乾坤', grade: 3, kind: 'capture', cap: 15, power: 2.6, cost: 3, desc: '葫芦垂光——将气血不足一成五的敌人摄入其中炼化；未能收摄时亦受重创' },
+    { id: 'fsfenran',name: '焚宇',     grade: 2, kind: 'damage', power: 2.2, fx: 'burn', pct: 3.5, rounds: 2, cost: 2, desc: '扇火焚宇——约2.2倍攻击伤害，并灼烧两回合' },
+    { id: 'fszhanyu',name: '镇岳',     grade: 2, kind: 'damage', power: 2.4, fx: 'defdown', pct: 25, rounds: 2, cost: 2, desc: '塔镇山岳——约2.4倍攻击伤害，并破防两成五' },
+    { id: 'fsfuyao', name: '缚妖索',   grade: 1, kind: 'fx', fx: 'slow', pct: 30, rounds: 2, cost: 1, desc: '索光化练——敌方身法迟滞三成，持续两回合' },
+    { id: 'fsdingyao',name: '定妖钟',  grade: 2, kind: 'fx', fx: 'freeze', rounds: 1, cost: 2, desc: '钟鸣定形——敌方下一回合无法动弹（精英可能挣脱）' },
+    { id: 'fsbaoguang',name: '宝光护体',grade: 1, kind: 'shield', power: 35, rounds: 2, cost: 1, desc: '宝光罩体——两回合内所受伤害减轻三成五' },
+    { id: 'fsxipo',  name: '噬魄',     grade: 3, kind: 'drain', power: 2.0, leech: 0.6, cost: 2, desc: '幡卷阴风——约2.0倍攻击伤害，六成化为自身气血' },
+  ],
 
   /* ---------- v19 道韵协同：功法双双修至三层以上，共鸣生韵 ---------- */
   DAO_YUN: [
@@ -833,7 +916,12 @@ const GameData = {
     /* ---- v19 失传丹方（需丹方残页参悟解锁：flags.recipeOk） ---- */
     { id: 'a1', out: 'pill_huiyuan', need: { m_lingzhi: 2, m_haixin: 1 },   rate: 45, needPages: 2 },
     { id: 'a2', out: 'pill_potian',  need: { m_neidan: 3, m_shentie: 1 },   rate: 40, needPages: 4 },
-    { id: 'a3', out: 'pill_poxu',    need: { m_shenmu: 2, m_xiancui: 2 },   rate: 35, needPages: 6 },
+    { id: 'a4', out: 'pill_humai', need: { m_xuelian: 1, m_lingzhi: 2 },   rate: 50, needPages: 2 },
+    { id: 'a5', out: 'pill_dujie', need: { m_longxue: 1, m_huolin: 2 },    rate: 40, needPages: 5 },
+    /* ---- v21 新增配方 ---- */
+    { id: 'r15', out: 'pill_shengui',  need: { m_lingcao: 1, m_yaopi: 1 }, rate: 70 },
+    { id: 'r16', out: 'pill_ningshen', need: { m_lingzhi: 1, m_bingpo: 1 }, rate: 55 },
+    { id: 'r17', out: 'pill_zhanyi',   need: { m_neidan: 1, m_huolin: 1 },  rate: 55 },
   ],
 
   /* ---------- v13 炼器配方（坊市炼器坊，消耗材料锻造装备；产出天级神兵的唯一途径） ---------- */
@@ -856,7 +944,59 @@ const GameData = {
     { id: 'f12', out: 's_cx_jian',  need: { m_huolin: 2, m_jiaojin: 1 },             rate: 50 },
     { id: 'f13', out: 's_cx_pao',   need: { m_huolin: 2, m_yaopi: 3 },               rate: 50 },
     { id: 'f14', out: 's_cx_gou',   need: { m_huolin: 1, m_neidan: 2 },              rate: 50 },
+    /* ---- v21 新增炼器（磐石 / 青莲套装） ---- */
+    { id: 'f18', out: 's_ps_jian',  need: { m_xuantie: 3, m_shentie: 1 },            rate: 45 },
+    { id: 'f19', out: 's_ps_jia',   need: { m_xuantie: 2, m_jiaojin: 2 },            rate: 45 },
+    { id: 'f20', out: 's_ps_huan',  need: { m_xuantie: 2, m_bingpo: 2 },             rate: 45 },
+    { id: 'f21', out: 's_ql_jian',  need: { m_xuecan: 2, m_lianhun: 1 },             rate: 45 },
+    { id: 'f22', out: 's_ql_yi',    need: { m_xuecan: 2, m_xuelian: 1 },             rate: 45 },
+    { id: 'f23', out: 's_ql_pei',   need: { m_lingzhi: 2, m_lianhun: 1 },            rate: 45 },
+    { id: 'f24', out: 'w_chijiao',  need: { m_longxue: 1, m_jiaojin: 2 },            rate: 45 },
   ],
+
+  /* ---------- v21 挖宝奖池（DigSys 按 digTier 取用；w 为权重） ----------
+   * 条目：{ w, stones } 灵石 / { w, item, qty } 指定物品 / { w, mats:[t1,t2] } 随机材料档 / { w, from:[...] } 池内随机物品 */
+  TREASURE_POOL: {
+    1: [
+      { w: 30, stones: [40, 90] },
+      { w: 18, mats: [1, 1] },
+      { w: 10, mats: [1, 2] },
+      { w: 8,  item: 'pill_liaoshang', qty: 2 },
+      { w: 7,  item: 'pill_juqi', qty: 2 },
+      { w: 6,  item: 'm_shouliang', qty: 3 },
+      { w: 6,  from: ['tal_huoshe', 'tal_jinguang', 'tal_jifengfu', 'tal_liaoshang'] },
+      { w: 3,  item: 'map_gu', qty: 1 },
+    ],
+    2: [
+      { w: 24, stones: [150, 320] },
+      { w: 12, mats: [2, 2] },
+      { w: 8,  mats: [2, 3] },
+      { w: 5,  item: 'm_zhenxiu', qty: 2 },
+      { w: 4,  item: 'm_danfang', qty: 1 },
+      { w: 5,  item: 'm_gongfa', qty: 1 },
+      { w: 6,  from: ['pill_ningshen', 'pill_guben', 'pill_zhanyi'] },
+      { w: 8,  from: ['tal_fuling', 'tal_shigu', 'tal_bingpo', 'tal_xuanbi', 'tal_shidu'] },
+      { w: 6,  from: ['gf_lieyang', 'gf_hansha', 'gf_jifeng', 'gf_yulin', 'gf_fenglei'] },
+      { w: 4,  from: ['w_hanshuang', 'a_xingyi', 'z_xingpan', 'w_hanxing', 'a_yunwen'] },
+      { w: 7,  from: ['egg_fengbao', 'egg_bingchan', 'egg_tengyao'] },
+      { w: 2,  item: 'map_xian', qty: 1 },
+    ],
+    3: [
+      { w: 22, stones: [500, 1100] },
+      { w: 8,  mats: [3, 3] },
+      { w: 8,  mats: [3, 4] },
+      { w: 4,  item: 'm_gupian', qty: 1 },
+      { w: 3,  item: 'm_lingguo', qty: 1 },
+      { w: 4,  from: ['pill_dujie', 'pill_huiyuan', 'pill_yuanshen', 'pill_bixue'] },
+      { w: 6,  from: ['tal_shaying', 'tal_tianlei', 'tal_posha'] },
+      { w: 6,  from: ['gf_tumo', 'gf_dayan', 'gf_bumie', 'gf_lihuo', 'gf_xuangui', 'gf_zhouyu'] },
+      { w: 2,  from: ['gf_zixiao', 'gf_taiji'] },
+      { w: 5,  from: ['w_zhuxian', 'a_longlin', 'z_taiji', 'w_chijiao', 'a_xingyue'] },
+      { w: 4,  from: ['z_hunyuan', 'z_fengyun', 'w_tianji', 'z_daoyun'] },
+      { w: 4,  from: ['s_ps_jian', 's_ps_jia', 's_ps_huan', 's_ql_jian', 's_ql_yi', 's_ql_pei'] },
+      { w: 3,  from: ['egg_yaohu', 'egg_gushou'] },
+    ],
+  },
 
   /* ---------- §20 红尘劫剧本（历练道德三选一）---------- */
   DILEMMAS: [

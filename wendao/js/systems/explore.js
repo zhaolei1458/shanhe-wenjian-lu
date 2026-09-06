@@ -178,7 +178,12 @@ const EventSys = {
     }
     const eco = GameData.eco(p.realmIdx);
     const arr = this.arrMult(map);
-    const kind = Utils.pickWeighted({ lingmai: 30, wudao: 20, yifu: 20, lingru: 15, shenquan: 8, tiancai: 7 });
+    // v21 奇遇扩池：新增八桩六系机缘（装备/丹药/宠物/技能/法宝/符箓/挖宝线）
+    const kind = Utils.pickWeighted({
+      lingmai: 18, wudao: 12, yifu: 10, lingru: 8, shenquan: 5, tiancai: 5,
+      yifu2: 5, yaopu: 5, shouxue: 5, jianzhong: 4, duanbei: 4, cangtu: 5, fabaoP: 4, fushi: 4, danlu: 4,
+    });
+    const rTier = Utils.clamp(Math.floor(p.realmIdx / 2) + 1, 1, 3);   // 机缘档随境界
     switch (kind) {
       case 'lingmai': {
         const gain = Math.round(90 * eco);
@@ -226,6 +231,83 @@ const EventSys = {
         const mat = Utils.pick(GameData.matsByTier(tier));
         Bag.addItem(mat, 2);
         Log.add(`你发现了一株罕见的天材地宝——${GameData.ITEMS[mat].name} ×2！`, 'gain');
+      }
+      /* ---- v21 奇遇扩池：六系机缘 ---- */
+      case 'yifu2': {
+        // 前辈遗府：成品法宝（词缀/法宝技随 instance 落定）
+        const items = { 1: ['w_tulong', 'a_huxin', 'z_jifengxue'], 2: ['w_hanshuang', 'a_xingyi', 'z_xingpan'], 3: ['w_sanqing', 'a_xuangui', 'z_qiankun'] }[rTier];
+        const id = Utils.pick(items);
+        Bag.addItem(id, 1);
+        Log.add(`你误入一处坍塌的前辈遗府，棺椁早已空置，殉葬的法宝却完好在匣——<b>${GameData.ITEMS[id].name}</b> 归你所有！`, 'gain');
+        break;
+      }
+      case 'yaopu': {
+        // 荒山药圃
+        const id = Utils.chance(30) ? 'm_danfang' : (Utils.chance(50) ? 'm_lingzhi' : 'm_lingcao');
+        const q = Utils.rand(2, 3);
+        Bag.addItem(id, q);
+        Log.add(`荒山深处竟有一片前人药圃，药草野化多年、长势疯旺——你采得 <b>${GameData.ITEMS[id].name} ×${q}</b>。`, 'gain');
+        break;
+      }
+      case 'shouxue': {
+        // 兽穴救崽
+        const eggs = { 1: ['egg_fengbao', 'egg_tengyao'], 2: ['egg_bingchan', 'egg_fengbao'], 3: ['egg_yaohu', 'egg_bingchan'] }[rTier];
+        const id = Utils.pick(eggs);
+        Bag.addItem(id, 1);
+        Log.add(`兽穴旁母兽尸骸已凉，巢中一枚兽蛋尚有余温。你以灵气细细温养，将 <b>${GameData.ITEMS[id].name}</b> 收入囊中——万物有灵，也算一段善缘。`, 'gain');
+        KarmaSys.addFortune(2);
+        break;
+      }
+      case 'jianzhong': {
+        // 剑冢
+        const weapons = { 1: ['w_qinggang', 'w_tulong'], 2: ['w_sanqing', 'w_hanshuang'], 3: ['w_zhuxian', 'w_chijiao'] }[rTier];
+        const id = Utils.pick(weapons);
+        Bag.addItem(id, 1);
+        Log.add(`万剑朝冢，剑鸣引路。冢前一柄断鞘之剑微微震颤，见你走近竟自鞘中跃出——<b>${GameData.ITEMS[id].name}</b> 认主而随！`, 'gain');
+        break;
+      }
+      case 'duanbei': {
+        // 断碑残功
+        const id = Utils.chance(40) ? 'm_gongfa' : Utils.pick({ 1: ['gf_tuna', 'gf_canghai', 'gf_tiebu'], 2: ['gf_lieyang', 'gf_jifeng', 'gf_fenglei'], 3: ['gf_tiangang', 'gf_wanjian', 'gf_dayan'] }[rTier]);
+        Bag.addItem(id, 1);
+        Log.add(id === 'm_gongfa'
+          ? '崖壁残碑下散落几页手抄残稿——碑文早随风化，残稿犹存。你拾起【功法残页】×1。'
+          : `崖壁残碑字迹漫漶，你凝神细辨半日，竟从碑文中悟出一步功法——【<b>${GameData.ITEMS[id].name}</b>】入你囊中！`);
+        break;
+      }
+      case 'cangtu': {
+        // 古修遗藏：藏宝图
+        const id = { 1: 'map_cangbao', 2: 'map_gu', 3: 'map_gu' }[rTier];
+        Bag.addItem(id, 1);
+        Log.add(`枯骨的手中攥着半卷兽皮——展开一看，竟是一幅<b>${GameData.ITEMS[id].name}</b>。你朝枯骨一拜：「借图一用，改日焚香还礼。」`, 'gain');
+        break;
+      }
+      case 'fabaoP': {
+        // 法宝残魄
+        if (Utils.chance(45)) {
+          Bag.addItem('m_gupian', 1);
+          Log.add('洞窟深处一缕器灵低鸣不散——循声望去，是半枚上古法宝的残片。你收起【上古法宝碎片】×1，器灵低鸣渐息，似有感激。', 'gain');
+        } else {
+          const id = Utils.pick(['z_hunyuan', 'z_pingan', 'z_juling']);
+          Bag.addItem(id, 1);
+          Log.add(`洞窟深处一缕器灵盘旋不散，见你道心澄澈，竟自附于一件小器物中相赠——<b>${GameData.ITEMS[id].name}</b> ×1。`, 'gain');
+        }
+        break;
+      }
+      case 'fushi': {
+        // 符师遗府
+        const id = Utils.pick({ 1: ['tal_huoshe', 'tal_jinguang', 'tal_jifengfu'], 2: ['tal_zilei', 'tal_fuling', 'tal_shidu'], 3: ['tal_bingpo', 'tal_xuanbi', 'tal_posha'] }[rTier]);
+        const q = Utils.rand(2, 3);
+        Bag.addItem(id, q);
+        Log.add(`荒废符庐之中，符案朱砂犹润——一位符师坐化前留下的符箓竟灵光未散。你拾得 <b>${GameData.ITEMS[id].name} ×${q}</b>。`, 'gain');
+        break;
+      }
+      case 'danlu': {
+        // 丹炉遗火
+        const id = Utils.pick({ 1: ['pill_juqi', 'pill_liaoshang'], 2: ['pill_ningshen', 'pill_guben', 'pill_zhanyi'], 3: ['pill_dahuan', 'pill_xuanling'] }[rTier]);
+        Bag.addItem(id, 1);
+        Log.add(`废丹炉中炉火未熄，炉底压着一枚保存完好的丹药——<b>${GameData.ITEMS[id].name}</b> ×1。千年炉温，竟将药力养得愈发醇厚。`, 'gain');
+        break;
       }
     }
   },

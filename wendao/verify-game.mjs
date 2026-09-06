@@ -817,8 +817,9 @@ try {
       }
     };
     for (let i = 0; i < 60 && !dilemmaFound; i++) {
+      if (i % 5 === 0) console.log(`  · T19 loop i=${i}`);
       await clearBattle(); // 仇家偷袭等战斗残留会挡住探索，先打完
-      await clickSel(page, '[data-action="act-explore"][data-map="village"]');
+      await clickSel(page, '[data-action="act-explore"][data-map="village"]').catch(() => {});
       await sleep(500);
       await clearBattle();
       const pv = await page.$eval('#popup-modal', el => !el.className.includes('hidden')).catch(() => false);

@@ -120,6 +120,35 @@ const CraftSys = {
     Game.afterAction();
   },
   drawCost(p) { return Math.round(40 * GameData.stoneEco(p.realmIdx)); },
+  /** v21 功法参悟：功法残页 ×3 拼合，参悟出一部与境界相称的完整功法 */
+  async canwu() {
+    const p = Game.player;
+    const NEED = 3;
+    if (Bag.count('m_gongfa') < NEED) { UI.toast(`功法残页不足（${Bag.count('m_gongfa')}/${NEED}）`); return; }
+    const maxGrade = Utils.clamp(Math.floor(p.realmIdx / 2) + 2, 1, 3);
+    const pool = Object.entries(GameData.ITEMS)
+      .filter(([id, d]) => d.type === 'gongfa' && (d.grade || 0) <= maxGrade && (!d.daoLimit || d.daoLimit === p.dao))
+      .map(([id]) => id);
+    if (!pool.length) { UI.toast('暂无可参悟的功法'); return; }
+    const outId = Utils.pick(pool);
+    const out = GameData.ITEMS[outId];
+    const ok = await UI.popup({
+      title: '参悟 · 功法残页',
+      html: `你取出 ${NEED} 页残稿铺于案上，以灵力推演文脉断续之处——隐约已可窥见全貌。<br>参悟将耗残页 ×${NEED}，随机拼合出一部功法（当前可得${'一二三'[maxGrade - 1]}阶及以下）。`,
+      options: [{ text: '参 悟', value: true, primary: true }, { text: '再凑凑', value: false }],
+    });
+    if (!ok) return;
+    Bag.removeItem('m_gongfa', NEED);
+    Time.add(2);
+    Bag.addItem(outId, 1);
+    p.counters.learns = (p.counters.learns || 0) + 1;
+    p.insight = Math.min(100, (p.insight || 0) + 4);
+    Log.add(`残页拼合，文脉贯通——失传功法【<b>${out.name}</b>】重见天日！（突破感悟 +4）`, 'realm');
+    UI.announce(`✦ 功法重光 · ${out.name} ✦`, 'gold');
+    Story.chron(`参悟残页功法「${out.name}」`);
+    Ambience.sfx('rare');
+    Game.afterAction();
+  },
   /** 画符（符修专属）：耗灵石出符，可自用可售卖 */
   /** 画符（符修专属）：耗灵石出符，可自用可售卖；v13 起随境界逐步解锁新符箓
    *  v18：每日画符成本递增（首次 1×，每轮 +50%，最多 5 倍），防止印钞 */

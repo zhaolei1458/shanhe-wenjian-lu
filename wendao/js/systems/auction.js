@@ -13,6 +13,11 @@ const AuctionSys = {
     { item: 'gf_dayan', base: 12000 }, { item: 'm_gupian', base: 10000 },
     { item: 'gf_wangchen', base: 15000 }, { item: 'gf_feixian', base: 15000 },
     { item: 'fruit_tianji', base: 22000 },   // v20 天机果（先天破桎）
+    /* ---- v21 挖宝与六系通道 ---- */
+    { item: 'map_xian', base: 6000 }, { item: 'w_tianji', base: 20000 },
+    { item: 'gf_taiji', base: 15000 }, { item: 'egg_gushou', base: 8000 },
+    { item: 's_ps_jian', base: 16000 }, { item: 's_ql_jian', base: 15000 },
+    { item: 'tal_tianlei', base: 5000 }, { item: 'm_lingguo', base: 5000 },
   ],
   PERIOD: 60,
   /** v20 神秘拍品：一成几率拍的是未鉴定之物（低价购入，鉴定为 1~5 品任意物） */
@@ -21,6 +26,7 @@ const AuctionSys = {
     { id: 'w_qinggang', grade: 1 }, { id: 'pill_pojing', grade: 2 }, { id: 'z_qiankun', grade: 2 },
     { id: 'gf_tiangang', grade: 2 }, { id: 'm_gupian', grade: 4 }, { id: 'pill_taichu', grade: 4 },
     { id: 'fruit_tianji', grade: 4 }, { id: 'w_zhuxian', grade: 3 }, { id: 'gf_jianxin', grade: 5 },
+    { id: 'egg_fengbao', grade: 2 }, { id: 'tal_bingpo', grade: 3 }, { id: 'map_gu', grade: 3 },
   ],
   state(p) {
     const day = Math.floor(p.day || 0);

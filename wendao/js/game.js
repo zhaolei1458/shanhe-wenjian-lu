@@ -377,6 +377,7 @@ const Game = {
     'bt-back': () => { if (Battle.active) { Battle.active.menu = null; Battle.render(); } },
     'bt-autocfg': () => Battle.autoCfgPopup(),   // v20 自动战斗策略
     'bt-benming': (d) => Battle.active && Battle.actBenming(d.k),   // v20 本命觉醒战技
+    'bt-fabao': () => Battle.active && Battle.actFabao(),           // v21 法宝技
     'act-salvage': (d) => Bag.salvage(d.item),   // v20 装备分解
     'act-beast-dispatch': (d) => BeastSys.dispatch(Number(d.uid)),   // v20 灵兽派遣
     'act-beast-trip-claim': (d) => BeastSys.claimTrip(Number(d.uid)),   // v20 寻宝归来
@@ -433,6 +434,8 @@ const Game = {
     'act-benming-feed': () => ForgeSys.feedBenming(),
     'act-xinmo': () => XinmoSys.start(),
     'act-beast-feed': (d) => BeastSys.feed(Number(d.uid)),
+    'act-beast-feed2': (d) => BeastSys.feedFood(Number(d.uid)),   // v21 兽粮/珍馐喂养
+    'act-canwu': () => CraftSys.canwu(),   // v21 功法残页参悟
     'act-beast-free': (d) => BeastSys.free(Number(d.uid)),
     /* --- v13 悬赏 / 黑市 --- */
     'act-bounty-submit': (d) => BountySys.submit(Number(d.i)),
