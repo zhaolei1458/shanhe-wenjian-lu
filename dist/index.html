@@ -2,13 +2,24 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f5efe2" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="山河问剑录" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
     <title>山河问剑录</title>
-    <script type="module" crossorigin src="./assets/index-6RN5GbHG.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CODWbBNQ.css">
+    <script type="module" crossorigin src="./assets/index-BS3TfmfL.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-C0XDKimE.css">
   </head>
   <body>
     <div id="app"></div>
+    <script>
+      // 2.0 第四层（4.4）：Service Worker 注册——离线可玩
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+      }
+    </script>
   </body>
 </html>

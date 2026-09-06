@@ -267,3 +267,39 @@ button:disabled { opacity: .4; cursor: default; }
   .panel { border-radius: 1em; border-bottom: 1px solid color-mix(in srgb, var(--ink, #2b2620) 35%, transparent); margin-bottom: 4.2em; }
   .panel-overlay { align-items: center; }
 }
+
+/* ============================================================
+   2.0 第四层（4.4）：移动手感收尾
+   ============================================================ */
+
+/* 触摸反馈：全可点元素按下微缩 + 去系统高亮 */
+button, .opt-btn, .huatou-btn, .mini-btn, .bn-btn, .eye-chip {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, filter 0.08s ease;
+}
+button:active, .opt-btn:active, .huatou-btn:active, .mini-btn:active, .bn-btn:active {
+  transform: scale(0.97);
+  filter: brightness(0.96);
+}
+
+/* 触控目标下限：拇指能点的都不小于 44px */
+.bn-btn { min-height: 48px; min-width: 48px; }
+.opt-btn, .huatou-btn { min-height: 44px; }
+.mini-btn { min-height: 36px; }
+
+/* 输入防 iOS 聚焦缩放：字号不小于 16px */
+.ws-input { font-size: 16px; min-height: 44px; }
+
+/* 底部导航避让安全区（iPhone 手势条） */
+.bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+/* 小屏：面板吃满宽度、卷轴留足呼吸 */
+@media (max-width: 699px) {
+  .panel { width: 100%; }
+  .ws-topbar { padding: 0.45em 0.6em; }
+  .ws-scroll { padding-bottom: 0.6em; }
+}
+
+/* 成就章未得态（图鉴册） */
+.ach-off { opacity: 0.45; }

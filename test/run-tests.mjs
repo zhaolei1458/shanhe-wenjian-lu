@@ -1724,7 +1724,8 @@ await (async () => {
   check('每个音色有合成参数（osc/noise+env+gain）', soundNames.every(n => SOUNDS[n].env && typeof SOUNDS[n].gain === 'number' && (SOUNDS[n].osc?.length || SOUNDS[n].noise)), 'def ok');
   check('文卷尾条选音（adventure→低钟）', pickSfx([{ kind: 'ambient', text: '春' }, { kind: 'adventure', text: 'x' }]) === 'bell_low', 'map ok');
   check('善账优先于 kind（清铃压过脚步声）', pickSfx([{ kind: 'ambient', text: '善账添了一笔' }]) === 'bell_bright', 'text-prio ok');
-  check('未知 kind 静默（宁少响不乱响）', pickSfx([{ kind: 'system', text: 'x' }]) === null, 'silent ok');
+  check('未知 kind 静默（宁少响不乱响）', pickSfx([{ kind: 'nonsense_kind', text: 'x' }]) === null, 'silent ok');
+  check('破境有声（system→上扬锣，4.4 接入）', pickSfx([{ kind: 'system', text: '【破境】' }]) === 'gong_up', 'map ok');
   check('静音开关往返持久化', (() => { audio.setMuted(true); const m = audio.muted; audio.setMuted(false); return m === true && audio.muted === false; })(), 'muted ok');
 
   // ---- 架构红线：引擎层无 audio 引用 ----
@@ -2534,6 +2535,45 @@ await (async () => {
   g30b.state.afterlife = { kind: 'shouzhong', step: 'huangquan' };
   g30b.input('看看四周'); // afterlife 状态下 input 不走 questTick，也不崩
   check('幽冥·afterlife 下输入不崩不推进', !!g30b.state.afterlife, 'ok');
+})();
+
+// ================= 闸三十一：2.0 第四层（三）——4.4 收尾（音效/图鉴/PWA/成就） =================
+(async function () {
+  console.log('\n—— 闸三十一：4.4 收尾 ——');
+
+  // 音效：引擎 say 用到的 kind 全有映射（战斗/破境/老死不再静默）
+  const { KIND_TO_SFX, SOUNDS } = await import('../src/audio.js');
+  const needKinds = ['combat', 'system', 'death', 'item', 'ledger', 'year', 'scene', 'event', 'ambient'];
+  const missing = needKinds.filter(k => !KIND_TO_SFX[k]);
+  check('音效·关键 kind 全有映射', missing.length === 0, missing.join(',') || 'ok');
+  const badTargets = Object.values(KIND_TO_SFX).filter(s => !SOUNDS[s]);
+  check('音效·映射目标音色全在册', badTargets.length === 0, badTargets.join(',') || 'ok');
+
+  // 图鉴成就：数据形状 + 成就名册非空
+  const { ACHIEVEMENTS } = await import('../src/content/achievements.js');
+  check('图鉴·成就名册非空且带字段', ACHIEVEMENTS.length >= 10 && ACHIEVEMENTS.every(a => a.id && a.name && a.desc && typeof a.test === 'function'), String(ACHIEVEMENTS.length));
+  // 直接走 finalizeDeath 验结算（成就盖世章 + codex 四栏）
+  const g31b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards31b = Game.rollFateCards('gate31b', g31b.meta);
+  g31b.rebirth(cards31b[0], '图鉴行者', g31b.meta, 'life-g31b');
+  g31b.pending = null;
+  g31b.state.life.minghao = '北门新人';
+  g31b.state.life.age = 95;
+  g31b.finalizeDeath('shouzhong');
+  check('图鉴·死时成就结算入 meta', Array.isArray(g31b.meta.achievements) && g31b.meta.achievements.includes('ach_begin') && g31b.meta.achievements.includes('ach_changshou'), JSON.stringify(g31b.meta.achievements || []).slice(0, 60));
+  check('图鉴·codex 四栏入 meta', !!g31b.meta.codex && ['deathKinds', 'minghao', 'beasts', 'advSeen'].every(k => Array.isArray(g31b.meta.codex[k])), 'ok');
+  check('图鉴·codex 收录名号与死法', g31b.meta.codex.minghao.includes('北门新人') && g31b.meta.codex.deathKinds.includes('shouzhong'), 'ok');
+
+  // PWA：manifest/sw/icon 三件在 public，index.html 引用
+  const { readFileSync, existsSync } = await import('node:fs');
+  const pub = (p) => new URL(`../public/${p}`, import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1');
+  check('PWA·manifest 在册', existsSync(pub('manifest.webmanifest')), 'ok');
+  check('PWA·sw 在册', existsSync(pub('sw.js')), 'ok');
+  check('PWA·icon 在册', existsSync(pub('icon.svg')), 'ok');
+  const idxHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  check('PWA·index.html 挂 manifest 与 sw 注册', idxHtml.includes('manifest.webmanifest') && idxHtml.includes('sw.js'), 'ok');
+  const manifest = JSON.parse(readFileSync(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8'));
+  check('PWA·manifest 字段齐全', manifest.name === '山河问剑录' && manifest.display === 'standalone' && manifest.start_url === './', 'ok');
 })();
 
 console.log(`\n${'='.repeat(40)}`);

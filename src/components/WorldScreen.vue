@@ -75,6 +75,7 @@
     <InventoryPanel :open="activePanel === 'inv'" @close="activePanel = ''" />
     <QuestPanel :open="activePanel === 'quest'" @close="activePanel = ''" />
     <WorldPanel :open="activePanel === 'world'" @close="activePanel = ''" />
+    <CodexPanel :open="activePanel === 'codex'" @close="activePanel = ''" />
 
     <!-- 袖中录抽屉 -->
     <div v-if="store.sleeveOpen" class="sleeve-drawer">
@@ -136,14 +137,16 @@ import SkillsPanel from './panels/SkillsPanel.vue';
 import InventoryPanel from './panels/InventoryPanel.vue';
 import QuestPanel from './panels/QuestPanel.vue';
 import WorldPanel from './panels/WorldPanel.vue';
+import CodexPanel from './panels/CodexPanel.vue';
 
-// 2.0 第零层：底导航五本册页
+// 2.0 第零层：底导航五本册页；2.0 第四层（4.4）：图鉴成就第六册
 const NAVS = [
   { key: 'char', label: '人物', ico: '人' },
   { key: 'skills', label: '武学', ico: '武' },
   { key: 'inv', label: '行囊', ico: '囊' },
   { key: 'quest', label: '任务', ico: '事' },
   { key: 'world', label: '天地', ico: '天' },
+  { key: 'codex', label: '图鉴', ico: '鉴' },
 ];
 const activePanel = ref('');
 

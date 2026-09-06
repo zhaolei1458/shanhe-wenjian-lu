@@ -26,11 +26,17 @@ export const KIND_TO_SFX = {
   dialog: 'tick',
   echo: 'tick',
   ambient: 'hush',
+  scene: 'hush',        // 4.4：场景亮相——极轻的静
   adventure: 'bell_low',
   combat: 'drum',
   event: 'bell_mid',
   imprint: 'gong_deep',
   dead: 'gong_deep',
+  death: 'gong_deep',   // 4.4：盖棺判词
+  system: 'gong_up',    // 4.4：破境/主线——上扬铜锣
+  item: 'bell_bright',  // 4.4：得物入囊
+  ledger: 'bell_mid',   // 4.4：旧账添笔
+  year: 'bell_mid',     // 4.4：岁末钟
 };
 
 // ---------- 特殊文本优先级（在 kind 兜底之前） ----------
