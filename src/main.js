@@ -4,7 +4,8 @@ import { Game, loadBigPools } from './engine/game.js';
 import { Save } from './save/db.js';
 import { newSeed } from './engine/rng.js';
 import { play, pickSfx } from './audio.js';
-import './styles/main.css';
+import './styles/fanren.css';   // 2.1：主界面骨架整体沿用「凡人问道」框架
+import './styles/main.css';     // 兼容层：变量别名 + 旧屏（标题/投生/盖棺/往世簿）+ 弹窗册页
 
 export const store = reactive({
   screen: 'title',            // title | rebirth | world | dead | past
