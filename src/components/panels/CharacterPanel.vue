@@ -11,7 +11,7 @@
           <div class="panel-row"><span>名姓</span><b>{{ life.name }}{{ life.alias ? `（化名"${life.alias}"）` : '' }}</b></div>
           <div class="panel-row"><span>年岁</span><b>{{ life.age }} 岁</b></div>
           <div class="panel-row"><span>境届</span><b>{{ realmWord }}</b></div>
-          <div class="panel-row"><span>寿元</span><b>{{ life.lifespanMax ? `约 ${life.lifespanMax} 岁` : '未卜' }}</b></div>
+          <div class="panel-row"><span>寿元</span><b>{{ life.lifespanMax ? `约 ${life.lifespanMax} 岁（现年 ${life.age}${spanWord}）` : '未卜' }}</b></div>
         </div>
         <div class="panel-sec">
           <div class="panel-sec-title">家底</div>
@@ -45,6 +45,16 @@ defineEmits(['close']);
 
 const life = computed(() => (store.game && store.game.state && store.game.state.life) || {});
 const dims = computed(() => life.value.dims || null);
+// 2.0 第三层：寿数分档——软计时上面板（破境续命/天材地宝延寿，玩家看得见自己还剩多少）
+const spanWord = computed(() => {
+  const l = life.value;
+  if (!l.lifespanMax || !l.age) return '';
+  const r = l.age / l.lifespanMax;
+  if (r >= 0.95) return '·油尽灯枯之相';
+  if (r >= 0.9) return '·鬓角见霜';
+  if (r >= 0.7) return '·知命之年';
+  return '·春秋正盛';
+});
 const realmWord = computed(() => {
   try {
     const eye = store.game && store.game.eyeNow ? store.game.eyeNow() : null;

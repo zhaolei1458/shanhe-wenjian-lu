@@ -528,6 +528,14 @@ export class Game {
     this.say(`（旧账册添了一笔：【${type}】${text}）`, 'ledger');
   }
 
+  // 2.0 第三层：破境续命的寿元增量播报（plan 3.2 验收——面板里境界涨、寿元涨，卷上也要看得见）
+  sayLifespanGain(oldSpan, label) {
+    const gain = (this.state.life.lifespanMax || 0) - (oldSpan || 0);
+    if (gain <= 0) return;
+    const word = gain >= 100 ? `百余（细算约${gain}）` : String(gain);
+    this.say(`（这具身体像一口被凿深的井——${label}之后，寿数约莫宽了${word}年。命，厚了。）`, 'system');
+  }
+
   // ---------- 光阴账 ----------
   advanceTime(parts, opts) {
     const life = this.state.life;
@@ -583,6 +591,14 @@ export class Game {
     if (!life.agingSigns && life.age >= life.lifespanMax * 0.9) {
       life.agingSigns = true;
       this.say('（你揽镜自照，发现鬓角有了霜色。提一口气，气到胸口就散——老了。寿数还剩几何，没人说得准，但你能觉出来：不多了。）', 'system');
+    }
+    // 2.0 第三层（plan 3.1）：灯枯之相——老死前三年逐年预警，软计时压到眼前
+    if (life.age >= life.lifespanMax - 3 && life.age < life.lifespanMax) {
+      this.say(this.rng.pick([
+        '（你上了一趟山，回来躺了三天。年轻时一夜走完的路，如今半途要歇两回。）',
+        '（入冬后你咳了一夜。天亮时你盯着窗纸上的光看了很久——你开始数日子了。）',
+        '（镜子里的人眼窝陷了下去。你心里清楚：寿数这条河，前头就是渡口。）',
+      ]), 'system');
     }
     if (life.age >= life.lifespanMax) { this.die('shouzhong'); return; }
     // 岁痕句
@@ -1348,10 +1364,20 @@ export class Game {
       const node = nodes[life.location.node];
       const hasOpportunity = node.tags?.includes('lingdi') || life.flags.leiyu_wu || life.flags.moza_seed || (life.corruption || 0) > 0;
       if (hasOpportunity) {
-        life.realm = 'zhuji'; life.realmStage = 0;
-        life.lifespanMax = Math.max(life.lifespanMax || 0, lifespanFor('zhuji', this.rng));
-        this.say(`【破境】${this.rng.pick(BREAKTHROUGH_TEXT.zhuji)}`, 'system');
-        this.book('记', '筑基功成，初尝长生');
+        // 2.0 第三层（plan 3.2）：破境要机缘也要运气——失败修为减半，下次再来
+        const p = Math.min(0.98, 0.75 + ((life.dims && life.dims.qiyun) || 50) / 200);
+        if (this.rng.chance(p)) {
+          const oldSpan = life.lifespanMax || 0;
+          life.realm = 'zhuji'; life.realmStage = 0;
+          life.lifespanMax = Math.max(oldSpan, lifespanFor('zhuji', this.rng));
+          this.say(`【破境】${this.rng.pick(BREAKTHROUGH_TEXT.zhuji)}`, 'system');
+          this.sayLifespanGain(oldSpan, '筑基');
+          this.book('记', '筑基功成，初尝长生');
+        } else {
+          life.xiwei = Math.floor(life.xiwei / 2);
+          this.say('（机缘就在眼前，气机却在这最后一关散了架——修为跌了一半，从头再来。别灰心：膜还在，说明你到过门口。修为攒满，下次再来。）', 'system');
+          this.book('记', '破境筑基失败，修为跌半');
+        }
       } else {
         this.say('（你行功至圆满处，气机却像撞上了一层看不见的膜——差一样东西。是什么，你说不上来。也许要一场雷雨，也许要一处灵地，也许要一个契机。）', 'system');
       }
@@ -1360,10 +1386,20 @@ export class Game {
       const node = nodes[life.location.node];
       const haiDi = node.tags?.includes('undersea') || node.id === 'lg_huilang' || node.id === 'lg_gongmen';
       if (haiDi) {
-        life.realm = 'jindan'; life.realmStage = 0;
-        life.lifespanMax = Math.max(life.lifespanMax || 0, lifespanFor('jindan', this.rng));
-        this.say(`【破境】${this.rng.pick(BREAKTHROUGH_TEXT.jindan)}`, 'system');
-        this.book('记', '海底灵眼静坐，金丹天成——一郡活神仙');
+        // 2.0 第三层（plan 3.2）：金丹一关同样有成败
+        const p = Math.min(0.98, 0.75 + ((life.dims && life.dims.qiyun) || 50) / 200);
+        if (this.rng.chance(p)) {
+          const oldSpan = life.lifespanMax || 0;
+          life.realm = 'jindan'; life.realmStage = 0;
+          life.lifespanMax = Math.max(oldSpan, lifespanFor('jindan', this.rng));
+          this.say(`【破境】${this.rng.pick(BREAKTHROUGH_TEXT.jindan)}`, 'system');
+          this.sayLifespanGain(oldSpan, '凝丹');
+          this.book('记', '海底灵眼静坐，金丹天成——一郡活神仙');
+        } else {
+          life.xiwei = Math.floor(life.xiwei / 2);
+          this.say('（潮声在耳边退去，丹却在那最后一瞬散成了雾——海底的静，接住了你的气，没接住你的心。修为跌了一半，从头再来。丹没有死，下次再来。）', 'system');
+          this.book('记', '海底凝丹失败，修为跌半');
+        }
       } else {
         this.say('（丹田的气机鼓荡如潮，可就是凝不成那个"圆"。夜里你做梦，梦见一片海——静得能听见心跳的海。也许丹要"静"出来，而不是炼出来。海底……有人说，金丹契机在海底。）', 'system');
       }

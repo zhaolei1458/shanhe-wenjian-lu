@@ -4,6 +4,7 @@
 // 纪律：目标字段即消费面（questTick 读什么，questline 就写什么）
 // ============================================================
 import { VILLAGE_ORPHAN } from '../content/questlines/village_orphan.js';
+import { LONGEVITY, appendLongevity } from '../content/questlines/longevity.js'; // 2.0 第三层：长生引导线
 
 const QUESTLINES = [VILLAGE_ORPHAN];
 
@@ -11,7 +12,9 @@ function currentQuestline(life) {
   return QUESTLINES.find(q => q.matchFate.test(life.fateId || ''));
 }
 function chapterDef(ql, id) {
-  return ql ? ql.chapters.find(c => c.id === id) : null;
+  if (ql) { const c = ql.chapters.find(c => c.id === id); if (c) return c; }
+  // 2.0 第三层：长生线是 append 型续线（不在 matchFate 体系内），章定义在此兜底
+  return LONGEVITY.chapters.find(c => c.id === id) || null;
 }
 function activeChapter(life) {
   return (life.questLog || []).find(q => q.status === 'active');
@@ -59,10 +62,11 @@ export function questTick(game) {
   for (const g of act.goals) {
     if (g.done) continue;
     if (g.type === 'node') g.done = life.location.node === g.target;
-    else if (g.type === 'city') g.done = life.location.city === g.target;
+    else if (g.type === 'city') g.done = Array.isArray(g.target) ? g.target.includes(life.location.city) : life.location.city === g.target;
     else if (g.type === 'event') g.done = (life.flags.doneEvents || []).includes(g.id);
     else if (g.type === 'flag') g.done = !!life.flags[g.key];
     else if (g.type === 'realm') g.done = life.realm === g.target;
+    else if (g.type === 'sect') g.done = !!life.sect; // 2.0 第三层：长生线「拜入名门」
     if (!g.done) allDone = false;
   }
   if (!allDone) return;
@@ -80,8 +84,12 @@ export function questTick(game) {
     game.say(`【主线·${ql.title}】第${nxt.chapter}章·${nxt.title}\n${nxt.desc}`, 'system');
     fireOnStart(game, ql, nxt.id);
   } else {
-    life.flags.mainline_done = true;
-    game.say('【主线】身世局告一段落——长生登顶的引导线，第三层接上。', 'system');
+    // 2.0 第三层：身世局破局后接长生引导线（幂等——长生线末章结也走这里，不重播）
+    if (!life.flags.mainline_done) {
+      life.flags.mainline_done = true;
+      game.say('【主线】身世局告一段落——往前的路，往高处去。', 'system');
+      appendLongevity(game);
+    }
   }
 }
 

@@ -18,6 +18,7 @@ import { rollItem, equippedBonus, equipItem } from '../src/engine/equipment.js';
 import { makeRng } from '../src/engine/rng.js';
 import { maybePassBy, maybeGateway } from '../src/engine/passby.js'; // 二十二期
 import { GATEWAY_EVENTS, PASSBY_EVENTS } from '../src/content/passby.js'; // 二十二期/二十三期
+import { appendLongevity } from '../src/content/questlines/longevity.js'; // 2.0 第三层
 
 // 十五期：奇遇大池（adventures15~24）改动态加载——全量闸跑前必须灌满
 await loadBigPools();
@@ -2230,7 +2231,21 @@ await (async () => {
   check('抉择·复仇路线落旗与账', g26.state.life.flags.quest_sc_done === true && g26.state.ledger.some(l => l.type === '仇'), 'ok');
   g26.input('看看四周');
   check('身世局全链走通·mainline_done', g26.state.life.flags.mainline_done === true, 'ok');
-  check('身世局五章全了结', g26.state.life.questLog.every(q => q.status === 'completed'), 'ok');
+  check('身世局五章全了结', g26.state.life.questLog.filter(q => q.id.startsWith('q_sc_')).every(q => q.status === 'completed'), 'ok');
+  // 2.0 第三层：长生引导线衔接（寻访仙山→拜入名门→突破筑基→突破金丹）
+  const cs1 = g26.state.life.questLog.find(q => q.id === 'q_cs_1');
+  check('长生线·四章入册', g26.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length === 4, String(g26.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length));
+  check('长生线·首章「寻访仙山」开卷', cs1 && cs1.status === 'active', cs1 ? cs1.status : 'missing');
+  check('长生线·首章目标直指仙山三城', cs1 && Array.isArray(cs1.goals[0].target) && cs1.goals[0].target.includes('kunlunxu'), 'ok');
+  // 长生线推进：登仙山→章结；拜师→章结
+  g26.state.life.location = { city: 'kunlunxu', node: 'kx_yuxu' };
+  g26.input('看看四周');
+  check('长生线·寻访仙山章结', g26.state.life.questLog.find(q => q.id === 'q_cs_1').status === 'completed', 'ok');
+  check('长生线·「拜入名门」接上', g26.state.life.questLog.find(q => q.id === 'q_cs_2').status === 'active', 'ok');
+  g26.state.life.sect = { id: 's_xueshan', joinedYear: g26.state.world.year, dutyCount: 0 };
+  g26.input('看看四周');
+  check('长生线·拜入名门章结（sect 目标推进）', g26.state.life.questLog.find(q => q.id === 'q_cs_2').status === 'completed', 'ok');
+  check('长生线·「突破筑基」接上', g26.state.life.questLog.find(q => q.id === 'q_cs_3').status === 'active', 'ok');
 
   // 战斗胜利旗标管线（winFlag 单元）：逃将旗标与缴获入囊
   const g26b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
@@ -2324,6 +2339,69 @@ await (async () => {
   g27g.finishCombat('win');
   check('以战养战·打赢武学修为涨三分', (g27g.state.life.wugongXiuwei || 0) === wg0g + 3, `${wg0g}→${g27g.state.life.wugongXiuwei}`);
   check('以战养战·pending 收束', g27g.pending === null, String(!!g27g.pending));
+})();
+
+// ================= 闸二十八：2.0 第三层——寿元压力 + 破境成败 + 长生线 =================
+(function () {
+  console.log('\n—— 闸二十八：寿元压力+破境+长生线 ——');
+
+  // 破境失败：机缘在场、运气不在——修为减半，下次再来（plan 3.2 验收）
+  const g28 = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards28 = Game.rollFateCards('gate28a', g28.meta);
+  g28.rebirth(cards28[0], '撞膜行者', g28.meta, 'life-g28');
+  g28.pending = null;
+  g28.state.life.realm = 'lianqi';
+  g28.state.life.xiwei = 320;
+  g28.state.life.flags.leiyu_wu = true; // 机缘在场
+  g28.rng.chance = () => false; // 运气不在
+  g28.checkBreakthrough();
+  check('破境失败·境界未破', g28.state.life.realm === 'lianqi', g28.state.life.realm);
+  check('破境失败·修为减半', g28.state.life.xiwei === 160, String(g28.state.life.xiwei));
+
+  // 破境成功：境界涨、寿元涨（plan 3.2 验收）
+  g28.rng.chance = () => true; // 换个吉日再来
+  const span0 = g28.state.life.lifespanMax || 0;
+  g28.state.life.xiwei = 320;
+  g28.checkBreakthrough();
+  check('破境成功·入了筑基', g28.state.life.realm === 'zhuji', g28.state.life.realm);
+  check('破境成功·寿元涨到两百上下', g28.state.life.lifespanMax >= 200 && g28.state.life.lifespanMax >= span0, `${span0}→${g28.state.life.lifespanMax}`);
+
+  // 无机缘撞膜：不破不罚（修为不动，等契机）
+  const g28b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards28b = Game.rollFateCards('gate28b', g28b.meta);
+  g28b.rebirth(cards28b[0], '守拙行者', g28b.meta, 'life-g28b');
+  g28b.pending = null;
+  g28b.state.life.realm = 'lianqi';
+  g28b.state.life.xiwei = 320;
+  g28b.rng.chance = () => true;
+  g28b.checkBreakthrough();
+  check('无机缘·不破不罚（修为不动）', g28b.state.life.realm === 'lianqi' && g28b.state.life.xiwei === 320, `${g28b.state.life.realm}/${g28b.state.life.xiwei}`);
+
+  // 灯枯预警：老死前三年逐年预警（plan 3.1 验收）
+  const g28c = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards28c = Game.rollFateCards('gate28c', g28c.meta);
+  g28c.rebirth(cards28c[0], '灯枯行者', g28c.meta, 'life-g28c');
+  g28c.pending = null;
+  g28c.state.life.age = 70;
+  g28c.state.life.lifespanMax = 72;
+  const b28c = g28c.journal.length;
+  g28c.yearTick();
+  const seg28c = g28c.journal.slice(b28c).map(x => x.text || '').join('\n');
+  check('灯枯预警·老死前有预警文字', /(歇两回|数日子|渡口)/.test(seg28c), seg28c.slice(0, 60));
+  check('灯枯预警·未到寿数人不死', g28c.state.alive === true, String(g28c.state.alive));
+
+  // 长生线幂等：重复衔接不重挂（plan 3.3 验收）
+  const g28d = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards28d = Game.rollFateCards('gate28d', g28d.meta);
+  g28d.rebirth(cards28d[0], '登楼行者', g28d.meta, 'life-g28d');
+  g28d.pending = null;
+  appendLongevity(g28d);
+  const csCount1 = g28d.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length;
+  appendLongevity(g28d);
+  const csCount2 = g28d.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length;
+  check('长生线·挂线四章', csCount1 === 4, String(csCount1));
+  check('长生线·幂等不重复', csCount2 === 4, String(csCount2));
+  check('长生线·金丹章压轴', g28d.state.life.questLog.find(q => q.id === 'q_cs_4').goals[0].target === 'jindan', 'ok');
 })();
 
 console.log(`\n${'='.repeat(40)}`);
