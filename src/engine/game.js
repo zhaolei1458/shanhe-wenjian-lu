@@ -77,6 +77,7 @@ export const bigPoolsLoaded = () => _bigPoolsLoaded;
 import '../content/adventures3.js'; // v4.0 三四期奇遇扩桩
 import { ECHOES, TRAVEL_EVENTS, YEAR_MARKS, PAYLOADS, BREAKTHROUGH_TEXT } from '../content/copy.js';
 import { startCombat, combatRound, endCombat, playerMoves, COMBAT_TEMPLATES } from './combat.js';
+import { questTick, questHint, initQuests } from './quest.js'; // 2.0 第一层：任务核
 import { tryCapture, feedMount, xunLevelOf, mountDeath } from './riding.js';
 import { beginNetherworld, planDianQueue, nwAdvance } from './netherworld.js';
 import { FESTIVALS, SEASON_FESTIVALS, MIWEN_POOL, DAOZANG_SPOTS, REGION_FLAVOR } from '../content/festivals.js';
@@ -796,6 +797,13 @@ export class Game {
   }
 
   afterCombatWin(opts) {
+    // 2.0 第一层：任务硬仗的胜利标记/缴获/判词（quest.js 目标消费面）
+    if (opts.winFlag) {
+      const life = this.state.life;
+      life.flags[opts.winFlag] = true;
+      if (opts.winItem) life.items.push({ ...opts.winItem });
+      if (opts.winSay) this.say(opts.winSay, 'system');
+    }
     if (opts.fromAdventure && opts.winStage !== undefined && opts.winStage !== null) {
       // 恢复奇遇上下文，继续走 win_goto 指向的阶段
       const advId = opts.advId || this.state.adventures.seen[this.state.adventures.seen.length - 1];
@@ -877,6 +885,7 @@ export class Game {
   input(raw) {
     if (!this.state.alive) return;
     this.state.monitor.inputCount++;
+    if (!this.state.afterlife && !this.state.combat) questTick(this); // 2.0 第一层：任务核目标推进（战斗/幽冥中不打扰）
     // 战斗态
     if (this.state.combat) { this.combatInput(raw); return; }
     // 事件/奇遇等待选项：允许按序号选择
@@ -1967,8 +1976,8 @@ export class Game {
     if (!this.state.alive || this.pending !== p0) return; // 十六期：效果致死/引幽冥——旧链让位
     if (opt.sleeve_add) this.applyEffect(opt, 'event');
     if (opt.combat) {
-      this.pending = { type: 'combat', fromEvent: true };
-      this.startCombat(opt.combat, { fromEvent: true });
+      this.pending = { type: 'combat', fromEvent: true, winFlag: opt.winFlag, winItem: opt.winItem, winSay: opt.winSay };
+      this.startCombat(opt.combat, { fromEvent: true, winFlag: opt.winFlag, winItem: opt.winItem, winSay: opt.winSay });
       return;
     }
     if (opt.trigger && ADVENTURES[opt.trigger.replace('adv_', 'adv_')]) {
@@ -2067,6 +2076,7 @@ export class Game {
     const a = this.askHeaven();
     const hl = HIDDEN_LINES[life.flags.hiddenLine];
     const xinshi = (hl && !(life.flags.doneEvents || []).includes(hl.hook)) ? `\n心里搁着一桩事：${hl.title}。` : '';
+    const zhuxian = questHint(life) ? `\n【主线】${questHint(life)}` : ''; // 2.0 第一层：问天指主线
     // 二十二期修 A：路况——眼下能去哪儿，永远写在明面上
     const { near, far } = this.routesOfHere();
     const luxu = '\n出得此地：' + (near.length ? near.join('、') : '（就在原地四下看看）')
@@ -2078,7 +2088,7 @@ export class Game {
       life.flags.sleeveMentioned = true;
       debut = '\n（你袖中藏着三卷册子——行路志、人物谱、旧账册，都收在「袖中录」里。走过的人、遇过的事，册子替你记着。）';
     }
-    this.say(`【问天】\n${a.jingdi}${xinshi}\n${a.kewei}${luxu}\n${a.xiuxing}\n${a.guangyin}${debut}\n（路要自己走，天只指个方向。）`, 'system');
+    this.say(`【问天】\n${a.jingdi}${xinshi}${zhuxian}\n${a.kewei}${luxu}\n${a.xiuxing}\n${a.guangyin}${debut}\n（路要自己走，天只指个方向。）`, 'system');
   }
 
   // ---------- 二十一期修 F：眼下栏数据源（UI 单一取数口） ----------

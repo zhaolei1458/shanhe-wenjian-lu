@@ -2175,6 +2175,73 @@ await (async () => {
   check('新档·questLog 字段就位', Array.isArray(fresh.state.life.questLog) && fresh.state.life.questLog.length === 0, 'ok');
 })();
 
+// ================= 闸二十六：2.0 第一层——任务核 + 山村孤儿身世局全链 =================
+(async function () {
+  console.log('\n—— 闸二十六：任务核+身世局全链 ——');
+  const g26 = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards26 = Game.rollFateCards('gate26a', g26.meta);
+  g26.rebirth(cards26[0], '身世行者', g26.meta, 'life-g26');
+  g26.pending = null;
+  g26.state.life.fateId = 'sc_f1'; // 强设山村孤儿命帖
+  g26.state.life.questLog = [];
+
+  // 首次行动：初始化主线第一章
+  let b26 = g26.journal.length;
+  g26.input('看看四周');
+  let seg26 = g26.journal.slice(b26).map(x => x.text || '').join('\n');
+  check('身世局初始化·第一章挂牌', seg26.includes('身世局·青溪谜踪') && seg26.includes('村中疑云'), seg26.slice(0, 60));
+  check('任务日志·五章入册', g26.state.life.questLog.length === 5, String(g26.state.life.questLog.length));
+
+  // 第一章：去后山山路
+  g26.state.life.location = { city: 'xiangye', node: 'shanlu' };
+  g26.input('看看四周');
+  const q1 = g26.state.life.questLog.find(q => q.id === 'q_sc_1');
+  const q2 = g26.state.life.questLog.find(q => q.id === 'q_sc_2');
+  check('第一章·到地即章结', q1.status === 'completed', q1.status);
+  check('第二章自动展开', q2.status === 'active', q2.status);
+  check('章结奖励发盘缠', g26.state.life.money >= 2, String(g26.state.life.money));
+
+  // 第二章：白影事件入 doneEvents
+  g26.state.life.flags.doneEvents.push('ev_houshan_yao');
+  g26.input('看看四周');
+  check('第二章·事件目标推进', g26.state.life.questLog.find(q => q.id === 'q_sc_3').status === 'active', 'ok');
+
+  // 问天带主线行
+  b26 = g26.journal.length;
+  g26.input('问天');
+  seg26 = g26.journal.slice(b26).map(x => x.text || '').join('\n');
+  check('问天出主线行', seg26.includes('【主线】第3章·初入江湖'), seg26.match(/【主线】[^\\]{0,30}/)?.[0] || 'x');
+
+  // 第三章：进天启城
+  g26.state.life.location = { city: 'tianqi', node: 'chengmen_dashi' };
+  g26.input('看看四周');
+  check('第三章·跨城章结', g26.state.life.questLog.find(q => q.id === 'q_sc_3').status === 'completed', 'ok');
+
+  // 第四章：截杀事件自动开演
+  check('第四章·截杀事件开演', g26.pending && g26.pending.ev && g26.pending.ev.id === 'ev_q_sc_ambush', g26.pending ? (g26.pending.ev || {}).id : String(!!g26.pending));
+  g26.chooseOption(1); // 忍下——路线确定性测试
+  check('截杀·忍下路线置胜利旗标', g26.state.life.flags.quest_sc_fight_done === true, 'ok');
+  g26.input('看看四周');
+  check('第四章·章结进第五章', g26.state.life.questLog.find(q => q.id === 'q_sc_5').status === 'active', 'ok');
+
+  // 第五章：抉择事件
+  check('第五章·抉择事件开演', g26.pending && g26.pending.ev && g26.pending.ev.id === 'ev_q_sc_choice', g26.pending ? (g26.pending.ev || {}).id : String(!!g26.pending));
+  g26.chooseOption(0); // 复仇路线
+  check('抉择·复仇路线落旗与账', g26.state.life.flags.quest_sc_done === true && g26.state.ledger.some(l => l.type === '仇'), 'ok');
+  g26.input('看看四周');
+  check('身世局全链走通·mainline_done', g26.state.life.flags.mainline_done === true, 'ok');
+  check('身世局五章全了结', g26.state.life.questLog.every(q => q.status === 'completed'), 'ok');
+
+  // 战斗胜利旗标管线（winFlag 单元）：逃将旗标与缴获入囊
+  const g26b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards26b = Game.rollFateCards('gate26b', g26b.meta);
+  g26b.rebirth(cards26b[0], '凯旋行者', g26b.meta, 'life-g26b');
+  g26b.afterCombatWin({ fromEvent: true, winFlag: 'wf_test', winItem: { id: 'item_t', name: '测试刀', kind: 'weapon' }, winSay: '胜了。' });
+  check('战斗胜利·winFlag 落旗', g26b.state.life.flags.wf_test === true, 'ok');
+  check('战斗胜利·缴获入行囊', g26b.state.life.items.some(i => i.name === '测试刀'), 'ok');
+  check('战斗胜利·判词入卷', g26b.journal.some(j => (j.text || '').includes('胜了。')), 'ok');
+})();
+
 console.log(`\n${'='.repeat(40)}`);
 console.log(`通过 ${pass} 项，失败 ${fail} 项`);
 if (fail) {

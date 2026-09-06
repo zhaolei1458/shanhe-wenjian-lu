@@ -9,7 +9,10 @@
         <div class="panel-sec">
           <div class="panel-sec-title">进行中</div>
           <div v-for="q in quests" :key="q.id" class="panel-row panel-item">
-            <b>{{ q.title }}</b><span>{{ q.desc || '' }}</span>
+            <b>{{ q.status === 'locked' ? '🔒 ' : '' }}第{{ q.chapter }}章·{{ q.title }}</b>
+            <span v-if="q.status === 'locked'">（前章了结后展开）</span>
+            <span v-else>{{ q.desc }}</span>
+            <span v-if="q.status === 'active'" class="panel-goal">▶ {{ goalHint(q) }}</span>
           </div>
         </div>
         <div class="panel-sec" v-if="done.length">
@@ -44,4 +47,8 @@ const xinshi = computed(() => {
     return eye && eye.xinshi ? eye.xinshi.title : null;
   } catch { return null; }
 });
+function goalHint(q) {
+  const pend = (q.goals || []).filter(g => !g.done);
+  return pend.length ? pend.map(g => g.hint || '继续推进').join('；') : '（目标达成中——下一拍推进）';
+}
 </script>
