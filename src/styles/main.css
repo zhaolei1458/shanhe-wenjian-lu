@@ -94,6 +94,8 @@ button:disabled { opacity: .4; cursor: default; }
 
 /* ---------- 闯世主屏 ---------- */
 .world-screen { padding: 12px 16px; }
+/* 2.0 修：底导航是 fixed 悬浮——主体留出导航高度，输入行/选项不再被盖 */
+.world-screen { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
 .ws-topbar {
   display: flex; align-items: center; gap: 12px;
   border-bottom: 1px solid var(--border); padding-bottom: 8px; flex-shrink: 0;
