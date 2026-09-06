@@ -30,7 +30,7 @@ export const EVENTS = {
     text: '你夜里借宿山神庙，半梦半醒间，供桌后传来窸窣声。一个黑影正把什么东西塞进神像底座的砖缝里，见你睁眼，黑影僵住了——是个中年汉子，怀里还抱着个睡熟的孩子。',
     options: [
       { label: '"你藏东西，我不问。孩子病了？"', effect: { ledger: { type: '恩', text: '山神庙夜遇逃难的汉子，赠伤药' }, items: [{ id: 'item_shangyao', name: '跌打伤药', desc: '黑影汉子塞给你的两包药，说"江湖上用得着"。' }], flags: { met_beinang_han: true } } },
-      { label: '抄家伙喝问"什么人！"', effect: { combat: 'c_beinang_han', flags: { met_beinang_han: true } } },
+      { label: '抄家伙喝问"什么人！"', effect: { flags: { met_beinang_han: true } }, combat: 'c_beinang_han' },
       { label: '装睡，天亮再看砖缝', effect: { items: [{ id: 'item_buzhuan_dongxi', name: '来历不明的小布包', desc: '神像底座砖缝里摸出来的，一层层裹得严实。' }], flags: { took_buzhuan: true } } },
     ],
   },
@@ -41,7 +41,7 @@ export const EVENTS = {
     options: [
       { label: '"你在找谁？也许我能帮上。"', effect: { trigger: 'adv_houshan_baiying' } },
       { label: '僵在原地，一动不敢动', effect: { flags: { saw_baiying: true }, stat: { xiwei: 3 }, text_after: '白影绕着你走了半圈，忽然叹了口气——妖物会叹气！它钻进林子不见了。可你胸口像被什么东西轻轻碰了一下，暖的。' } },
-      { label: '搭弓便射', effect: { combat: 'c_baiying', flags: { offended_baiying: true } } },
+      { label: '搭弓便射', effect: { flags: { offended_baiying: true } }, combat: 'c_baiying' },
     ],
   },
   ev_xipo_feng: {
@@ -122,7 +122,7 @@ export const EVENTS = {
     id: 'ev_matou_gongchao', nodes: ['matou'], weight: 5,
     text: '码头炸了锅——工头发了话：今年工钱再扣两成，"上方压下来的"。扛包的汉子们攥着扁担不散，眼看着就要出事。有人认出了你："这位常在码头上走动，帮我们评评理！"',
     options: [
-      { label: '站到扛包人这边，去找工头理论', effect: { combat: 'c_gongtou_daren', ledger: { type: '恩', text: '码头工潮中替扛包人出头' }, trait: { xia: 2 }, echo: { delayYears: 1, payload: { type: 'matou_gratitude', text: 'PAY_MATOU_GRAT' } } } },
+      { label: '站到扛包人这边，去找工头理论', effect: { ledger: { type: '恩', text: '码头工潮中替扛包人出头' }, trait: { xia: 2 }, echo: { delayYears: 1, payload: { type: 'matou_gratitude', text: 'PAY_MATOU_GRAT' } } }, combat: 'c_gongtou_daren' },
       { label: '两边劝——工钱要争，别见血', effect: { trait: { ren: 1 }, money: 2, text_after: '你磨了一下午嘴皮子。最后工头松口扣一成，汉子们散了——没散出人命，这码头今年就算功德圆满。' } },
       { label: '趁乱多扛几包自己的', effect: { money: 3, trait: { si: 1 }, flags: { matou_zhanpianyi: true } } },
     ],
@@ -131,7 +131,7 @@ export const EVENTS = {
     id: 'ev_wuhang_bishi', nodes: ['wuhangjie'], weight: 5,
     text: '武行街街心，两个镖师在拴马石边比划上了，围了半街的人。输赢没分出来，脸先红了。有人起哄："让这位客官评评——到底谁的刀快！"两个镖师齐齐看向你。',
     options: [
-      { label: '下场比划两招', cond: { hasCombatSkill: true }, effect: { combat: 'c_wuhang_bishi', win: { minghao: '初出茅庐', money: 5 } } },
+      { label: '下场比划两招', cond: { hasCombatSkill: true }, combat: 'c_wuhang_bishi', winFx: { minghao: '初出茅庐', money: 5 } },
       { label: '"刀快不快，看刀口就知道——你们的刀口，都是卷的。"', effect: { stat: { wuxing: 1 }, text_after: '满街哄笑，两个镖师臊得脸通红，倒是冰释了。（外行话，有时比内行话管用。）' } },
       { label: '看热闹，不掺和', effect: {} },
     ],
@@ -169,7 +169,7 @@ export const EVENTS = {
     id: 'ev_xiaojinku_quan', nodes: ['xiaojinku'], weight: 6,
     text: '黑拳场今夜开锣。台下押注的喊声能掀了屋顶，台上一个赤膊汉子正被人按着打。掌柜的瞥见你："客官气色不错——上台？一胜五两。台下押你赢的，赔率一赔八。"',
     options: [
-      { label: '上台打一场', cond: { hasCombatSkill: true }, effect: { combat: 'c_heiquan', win: { money: 5, minghao: '北门新人' }, lose: { hp: -40, text_after: '你被抬下台时，掌柜的还在笑："年轻人，拳场不养面子。"（伤是真的。）' } } },
+      { label: '上台打一场', cond: { hasCombatSkill: true }, combat: 'c_heiquan', winFx: { money: 5, minghao: '北门新人' } },
       { label: '押那挨打的汉子赢——他眼神不像输家', cond: { moneyMin: 2 }, effect: { chance: 0.6, success: { money: 16, text_after: '那汉子后半场像是换了个人，三拳翻盘。你赢了十六两。（你押的不是拳，是眼神。）' }, fail: { money: -2 } } },
       { label: '看一场就走', effect: {} },
     ],
@@ -296,7 +296,7 @@ export const EVENTS = {
     text: '荒驿之夜，风声呜呜。你和同屋的贩马客轮值守夜。后半夜，风里忽然传来叩门声——三长两短，是商队的暗号。可贩马客死死按住你的手，摇头，嘴唇动了动："我们的暗号，不是这个。"',
     options: [
       { label: '不出声，握紧刀', effect: { flags: { huangyi_night_ok: true }, text_after: '叩门声又响了两轮，停了。天亮开门——门外雪地上，一行脚印绕着驿站走了三圈，出去了，没进来。（谁在学商队的暗号？为什么要人开门？）' } },
-      { label: '"什么人？"——应一声', effect: { combat: 'c_goubi_ren', text_after: '门"吱呀"被推开——门口站着的人，脸上有雪，没有影子。' } },
+      { label: '"什么人？"——应一声', text_after: '门"吱呀"被推开——门口站着的人，脸上有雪，没有影子。', combat: 'c_goubi_ren' },
     ],
   },
 
@@ -324,7 +324,7 @@ export const EVENTS = {
     options: [
       { label: '记住"银主"二字，全身而退', effect: { flags: { knows_yinzhu: true }, ledger: { type: '怨', text: '查到药人坊背后有"银主"买凶试药' } } },
       { label: '顺着排水渠摸进去救人', effect: { trigger: 'adv_yaoren_jiu' } },
-      { label: '敲晕守卫，硬闯', effect: { combat: 'c_shouwei', then: 'adv_yaoren_jiu' } },
+      { label: '敲晕守卫，硬闯', combat: 'c_shouwei', thenAdv: 'adv_yaoren_jiu' }
     ],
   },
   ev_hq_luanzang_ye: {
@@ -342,7 +342,7 @@ export const EVENTS = {
     id: 'ev_xinglu_shengshi', nodes: ['guandao', 'yh_xia'], weight: 7,
     text: '行路第三日，前方歇脚亭的烟还没散——三个人影拦在路心，刀都出了半鞘。为首的咧嘴："此山……算了，老词儿不念了。留一半盘缠，人过去。"（行路生事，是江湖的一部分。）',
     options: [
-      { label: '拔刀——讲不通就动手', cond: { hasCombatSkill: true }, effect: { combat: 'c_jianjing' } },
+      { label: '拔刀——讲不通就动手', cond: { hasCombatSkill: true }, combat: 'c_jianjing' },
       { label: '"交一半。交朋友。"——爽快给钱', effect: { money: -3, text_after: '为首的一愣，笑了："懂规矩。"他竟还了你半句话，"前面十里有人查货，绕小路，贴着河走。"（钱买了个顺水人情——值不值，各人算各人的账。）' } },
       { label: '绕小路，避开这一拨', effect: { timeCost: 1, chance: 0.7, success: { text_after: '小路难走，但清静。' }, fail: { combat: 'c_jianjing', text_after: '小路上竟然也有人——还是这三个。看来是专挑"绕路的"下手。' } } },
     ],

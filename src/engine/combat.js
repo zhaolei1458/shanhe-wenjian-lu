@@ -12,7 +12,7 @@ export const COMBAT_TEMPLATES = {
     intro: '为首的强人把刀抽了出来，刀背拍在掌心："识相的，留下买路钱。"',
     hp: 40, atk: 9, def: 4, spd: 6, style: 'oldhand', winMoney: 0,
     winText: '强人们抱头鼠窜。你把刀尖上的血在草叶上抹了抹——第一次见血的人手会抖，你的没抖（或者抖了，你握紧了些）。',
-    loseText: null,
+    loseText: null, lethal: true, // 2.0 第二层：剪径是要命的买卖——输即横死
   },
   c_jinjun: {
     id: 'c_jinjun', name: '禁军', count: 2,
@@ -20,6 +20,14 @@ export const COMBAT_TEMPLATES = {
     hp: 50, atk: 10, def: 7, spd: 7, style: 'soldier', winMoney: 0,
     winText: '你击退了禁军——然后跑得比谁都快。此地不可久留，皇城的通缉画像，画师的手艺一向很好。',
     loseText: '你被按倒在宫墙根下。执事太监走过来，看了你很久："……关进慎刑司。"(此路收束。)',
+    lethal: true, // 2.0 第二层：慎刑司收束——输即此局了结
+  },
+  c_beinang_han: {
+    id: 'c_beinang_han', name: '背囊汉', count: 1,
+    intro: '那汉子不答话，把背囊往地上一放，囊底硌出兵刃的棱角。他活动了一下肩："荒郊野岭，问那么多做什么。"',
+    hp: 42, atk: 9, def: 4, spd: 6, style: 'oldhand', winMoney: 3,
+    winText: '背囊汉退了三步，忽然抱拳收手："有眼力。"他拾起背囊，绕开你走了——囊里露出半卷泛黄的图。（他记下你了。）',
+    loseText: '你眼前发黑跪倒在道旁。他翻走了你半袋干粮，临走看了你一眼："功夫不到家，别乱问路。"（没要你的命。为什么？）',
   },
   c_gongtou_daren: {
     id: 'c_gongtou_daren', name: '工头及其打手', count: 1,

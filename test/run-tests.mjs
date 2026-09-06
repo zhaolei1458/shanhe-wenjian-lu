@@ -2242,6 +2242,90 @@ await (async () => {
   check('战斗胜利·判词入卷', g26b.journal.some(j => (j.text || '').includes('胜了。')), 'ok');
 })();
 
+// ================= 闸二十七：2.0 第二层——战斗与成长闭环（坑 3.1/3.3） =================
+(function () {
+  console.log('\n—— 闸二十七：战斗与成长闭环 ——');
+
+  // 新模板就位（内容层引用 c_beinang_han，缺模板即崩溃）
+  check('战斗模板·背囊汉在册', !!COMBAT_TEMPLATES.c_beinang_han, String(!!COMBAT_TEMPLATES.c_beinang_han));
+  check('战斗模板·致命战有标记', COMBAT_TEMPLATES.c_jianjing.lethal === true && COMBAT_TEMPLATES.c_jinjun.lethal === true, 'ok');
+
+  // 坑 3.3：银钱下限
+  const g27 = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards27 = Game.rollFateCards('gate27a', g27.meta);
+  g27.rebirth(cards27[0], '账房行者', g27.meta, 'life-g27');
+  g27.pending = null;
+  g27.state.life.money = 3;
+  g27.applyEffect({ money: -10 }, 'test');
+  check('银钱下限·扣穿归零不为负', g27.state.life.money === 0, String(g27.state.life.money));
+
+  // 五维入档（面板消费面）
+  const d27 = g27.state.life.dims;
+  check('五维·字段齐备', ['gengu', 'wuxing', 'qiyun', 'meili', 'fuyuan'].every(k => typeof d27[k] === 'number' && d27[k] >= 30 && d27[k] <= 95), JSON.stringify(d27));
+
+  // 坑 3.1 翻译层：effect.combat 旧写法也能真开打
+  const g27b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards27b = Game.rollFateCards('gate27b', g27b.meta);
+  g27b.rebirth(cards27b[0], '拔刀行者', g27b.meta, 'life-g27b');
+  g27b.pending = null;
+  g27b.resolveEventOption({ label: '测试', effect: { combat: 'c_gongtou_daren' } });
+  check('翻译层·effect.combat 提升为顶层开打', g27b.state.combat && g27b.state.combat.tid === 'c_gongtou_daren' && g27b.pending.type === 'combat', g27b.state.combat ? g27b.state.combat.tid : 'no-combat');
+
+  // chance 败路接战斗
+  const g27c = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards27c = Game.rollFateCards('gate27c', g27c.meta);
+  g27c.rebirth(cards27c[0], '蒙混行者', g27c.meta, 'life-g27c');
+  g27c.pending = null;
+  g27c.rng.chance = () => false; // 强制败路
+  g27c.resolveEventOption({ label: '测试', chance: 0.5, success: { text_after: '过了。' }, fail: { combat: 'c_jinjun', text_after: '被看穿了。' } });
+  check('chance 败路·fail.combat 开打', g27c.state.combat && g27c.state.combat.tid === 'c_jinjun', g27c.state.combat ? g27c.state.combat.tid : 'no-combat');
+
+  // 事件战·败而不死（成长闭环：输得起，但伤真、学真）
+  const g27d = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards27d = Game.rollFateCards('gate27d', g27d.meta);
+  g27d.rebirth(cards27d[0], '拳台行者', g27d.meta, 'life-g27d');
+  g27d.pending = null;
+  const wg0 = g27d.state.life.wugongXiuwei || 0;
+  g27d.state.combat = { tid: 'c_heiquan', tpl: COMBAT_TEMPLATES.c_heiquan, enemy: { name: '黑拳对手' }, result: 'lose' };
+  g27d.pending = { type: 'combat', fromEvent: true };
+  g27d.finishCombat('lose');
+  check('败而不死·人活着', g27d.state.alive === true && !g27d.state.afterlife, `alive=${g27d.state.alive} afterlife=${!!g27d.state.afterlife}`);
+  check('败而不死·武学修为涨了（败中练胆）', (g27d.state.life.wugongXiuwei || 0) === wg0 + 2, `${wg0}→${g27d.state.life.wugongXiuwei}`);
+
+  // 致命战·输即横死（走了幽冥或当场殒命）
+  const g27e = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards27e = Game.rollFateCards('gate27e', g27e.meta);
+  g27e.rebirth(cards27e[0], '亡命行者', g27e.meta, 'life-g27e');
+  g27e.pending = null;
+  g27e.rng.chance = () => true; // 勾魂判定走幽冥支（确定性）
+  g27e.state.combat = { tid: 'c_jianjing', tpl: COMBAT_TEMPLATES.c_jianjing, enemy: { name: '剪径强人' }, result: 'lose' };
+  g27e.pending = { type: 'combat', fromEvent: true };
+  g27e.finishCombat('lose');
+  check('致命战·输即了结（入幽冥或身死）', !g27e.state.alive || !!g27e.state.afterlife, `alive=${g27e.state.alive} afterlife=${!!g27e.state.afterlife}`);
+
+  // winFx：打赢有名号有钱（坑 3.1 旧写法 effect.win 的消费面）
+  const g27f = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards27f = Game.rollFateCards('gate27f', g27f.meta);
+  g27f.rebirth(cards27f[0], '凯旋行者', g27f.meta, 'life-g27f');
+  g27f.pending = null;
+  const m0 = g27f.state.life.money;
+  g27f.afterCombatWin({ fromEvent: true, winFx: { money: 5, minghao: '北门新人' } });
+  check('winFx·名号到手', g27f.state.life.minghao === '北门新人', g27f.state.life.minghao);
+  check('winFx·赏钱入囊', g27f.state.life.money === m0 + 5, `${m0}→${g27f.state.life.money}`);
+
+  // 打赢一场长功夫（变强可见性）——走 finishCombat win 分支
+  const g27g = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards27g = Game.rollFateCards('gate27g', g27g.meta);
+  g27g.rebirth(cards27g[0], '以战养战行者', g27g.meta, 'life-g27g');
+  g27g.pending = null;
+  const wg0g = g27g.state.life.wugongXiuwei || 0;
+  g27g.state.combat = { tid: 'c_goubi_ren', tpl: COMBAT_TEMPLATES.c_goubi_ren, enemy: { name: '夜叩之人' }, result: 'win' };
+  g27g.pending = { type: 'combat', fromEvent: true };
+  g27g.finishCombat('win');
+  check('以战养战·打赢武学修为涨三分', (g27g.state.life.wugongXiuwei || 0) === wg0g + 3, `${wg0g}→${g27g.state.life.wugongXiuwei}`);
+  check('以战养战·pending 收束', g27g.pending === null, String(!!g27g.pending));
+})();
+
 console.log(`\n${'='.repeat(40)}`);
 console.log(`通过 ${pass} 项，失败 ${fail} 项`);
 if (fail) {

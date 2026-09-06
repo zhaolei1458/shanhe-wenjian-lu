@@ -17,9 +17,17 @@
           <div class="panel-sec-title">家底</div>
           <div class="panel-row"><span>气血</span><b>{{ life.hp }} / {{ life.maxHp }}</b></div>
           <div class="panel-row"><span>修为</span><b>{{ life.xiwei }}</b></div>
+          <div class="panel-row"><span>武学</span><b>{{ life.wugongXiuwei || 0 }}</b></div>
           <div class="panel-row"><span>盘缠</span><b>{{ life.money }} 贯</b></div>
         </div>
-        <p class="panel-hint">（2.0 成长核：五维根骨/悟性，第二层填入。）</p>
+        <div class="panel-sec" v-if="dims">
+          <div class="panel-sec-title">五维</div>
+          <div class="panel-row"><span>根骨</span><b>{{ dims.gengu }}</b></div>
+          <div class="panel-row"><span>悟性</span><b>{{ dims.wuxing }}</b></div>
+          <div class="panel-row"><span>气运</span><b>{{ dims.qiyun }}</b></div>
+          <div class="panel-row"><span>魅力</span><b>{{ dims.meili }}</b></div>
+          <div class="panel-row"><span>福缘</span><b>{{ dims.fuyuan }}</b></div>
+        </div>
       </div>
       <div class="panel-body" v-else>
         <p class="panel-empty">尚未落入此世。</p>
@@ -36,6 +44,7 @@ defineProps({ open: Boolean });
 defineEmits(['close']);
 
 const life = computed(() => (store.game && store.game.state && store.game.state.life) || {});
+const dims = computed(() => life.value.dims || null);
 const realmWord = computed(() => {
   try {
     const eye = store.game && store.game.eyeNow ? store.game.eyeNow() : null;

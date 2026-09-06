@@ -9,14 +9,13 @@
         <div class="panel-sec" v-if="items.length">
           <div class="panel-sec-title">随身物件</div>
           <div v-for="i in items" :key="i.id || i.name" class="panel-row panel-item">
-            <b>【{{ i.name }}】{{ equipped === i.id ? '（正在用）' : '' }}</b><span>{{ i.desc || '' }}</span>
+            <b>【{{ i.name }}】{{ equipped === i.id ? `（正在用${combatWord(i)}）` : '' }}</b><span>{{ i.desc || '' }}</span>
           </div>
         </div>
         <div class="panel-sec" v-if="estate">
           <div class="panel-sec-title">身家</div>
           <div class="panel-row panel-item"><span v-html="estate"></span></div>
         </div>
-        <p class="panel-hint">（装备槽：兵刃/护甲/饰品，第二层填入；眼下点「用起来」即可佩戴。）</p>
       </div>
       <div class="panel-body" v-else>
         <p class="panel-empty">家当少得可怜——穷有穷的轻省。</p>
@@ -44,4 +43,13 @@ const estate = computed(() => {
   if (l.mount) out.push(`坐骑·${l.mount.name}`);
   return out.join('　');
 });
+// 2.0 第二层：佩戴之物战力加成可见（引擎 combat 消费 it.combat，面板只说"趁手"）
+function combatWord(it) {
+  const c = it.combat || 0;
+  if (c >= 7) return '·神兵利器';
+  if (c >= 4) return '·上品趁手';
+  if (c >= 2) return '·颇为顺手';
+  if (c >= 1) return '·还算称手';
+  return '';
+}
 </script>

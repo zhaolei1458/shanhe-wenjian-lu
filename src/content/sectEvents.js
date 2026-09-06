@@ -69,7 +69,7 @@ Object.assign(EVENTS, {
     id: 'ev_we_yaoshou_zai', weight: 6, nodes: ['yh_changjie'], kind: 'worldevent',
     text: '镇口的告示墙前围了一圈人：北道又折了一支商队，官府悬赏猎杀伤人的妖兽。告示的纸还新，边角已经被人撕去一角——有人比官府先动了手。',
     options: [
-      { label: '揭下赏格', effect: { combat: 'c_baiying', win: { minghao: '猎妖手' } }, text_after: '你把赏格折好收进怀里——这单活，接了。' },
+      { label: '揭下赏格', text_after: '你把赏格折好收进怀里——这单活，接了。', combat: 'c_baiying', winFx: { minghao: '猎妖手' } },
       { label: '跟人群打听妖兽的来路', effect: { sleeve_add: { book: 'events', entry: { year: '今岁', text: '北道妖患——伤人的是头白毛兽，五指爪印，像人手。' } } }, text_after: '一个老猎户模样的汉子压低声音："那不是兽。兽不留那样的爪印。"他不再多说了。' },
       { label: '避着走，多一事不如少一事', effect: { trait: { si: 1 } }, text_after: '你贴着墙根走开了。风紧的日子，活着比逞强要紧——你是这么劝自己的。' },
     ],

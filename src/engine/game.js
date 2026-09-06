@@ -434,7 +434,12 @@ export class Game {
     if (ef.chance !== undefined) {
       // 已在上层裁决过 success/fail 的不重复掷
     }
-    if (ef.money) life.money += ef.money;
+    if (ef.money) {
+      // 2.0 第二层（坑 3.3）：银钱有下限——江湖再难，不至于负账开局
+      const before = life.money;
+      life.money = Math.max(0, life.money + ef.money);
+      if (life.money === 0 && before > 0 && ef.money < 0) this.say('（你把囊底翻了个遍——最后一文也搭进去了。）', 'echo');
+    }
     if (ef.zuohua) { this.die('daocheng', ef.zuohua); return; }  // 轮回井坐化：主动交还此生
     if (ef.hp) { life.hp = Math.min(life.maxHp, life.hp + ef.hp); if (life.hp <= 0) this.die('hengsi'); }
     if (ef.items) {
@@ -783,13 +788,32 @@ export class Game {
     if (result === 'win') {
       const tpl = c.tpl;
       this.applyEffect({ money: tpl.winMoney || 0 }, 'combat');
-      if (this.state.alive) this.afterCombatWin(opts);
+      if (this.state.alive) {
+        // 2.0 第二层：以战养战——打赢一场，手上功夫扎实三分（变强可见性）
+        const life = this.state.life;
+        life.wugongXiuwei = (life.wugongXiuwei || 0) + 3;
+        this.say('（这一场打完，出手比先前稳了半分——手上功夫，是打出来的。）', 'system');
+        this.afterCombatWin(opts);
+      }
     } else if (result === 'lose') {
-      this.say(c.tpl.loseText || '你败了。', 'combat');
-      if (opts.loseEnd === 'hengsi' || !opts.fromAdventure) {
-        this.die('hengsi', null);
-      } else {
+      if (opts.fromEvent && !c.tpl.lethal && c.tpl.loseText) {
+        // 2.0 第二层：事件战败而不死——伤是真伤，命留给你怕（坑 3.1 成长闭环：输了会怕死，但还有下一手）
+        this.say(c.tpl.loseText, 'combat');
+        if (opts.loseFx) {
+          if (opts.loseFx.text_after) this.say(opts.loseFx.text_after, 'combat');
+          this.applyEffect(opts.loseFx, 'combat');
+        }
+        this.say('（你败了，但活着。对方的路数，你记进了骨头里。）', 'system');
+        const life = this.state.life;
+        life.wugongXiuwei = (life.wugongXiuwei || 0) + 2;
         this.closePending();
+      } else {
+        this.say(c.tpl.loseText || '你败了。', 'combat');
+        if (opts.loseEnd === 'hengsi' || !opts.fromAdventure) {
+          this.die('hengsi', null);
+        } else {
+          this.closePending();
+        }
       }
     } else if (result === 'fled') {
       this.closePending();
@@ -804,12 +828,18 @@ export class Game {
       if (opts.winItem) life.items.push({ ...opts.winItem });
       if (opts.winSay) this.say(opts.winSay, 'system');
     }
+    // 2.0 第二层：事件战胜利奖励（名号/银钱——坑 3.1 旧写法 effect.win 的消费面）
+    if (opts.winFx) this.applyEffect(opts.winFx, 'combat');
     if (opts.fromAdventure && opts.winStage !== undefined && opts.winStage !== null) {
       // 恢复奇遇上下文，继续走 win_goto 指向的阶段
       const advId = opts.advId || this.state.adventures.seen[this.state.adventures.seen.length - 1];
       this.ui.mode = 'adventure';
       this.pending = { type: 'adventure', id: advId };
       this.runAdventureStage(opts.winStage);
+    } else if (opts.thenAdv && ADVENTURES[opts.thenAdv]) {
+      // 2.0 第二层：打赢转奇遇（旧写法 effect.then 的消费面）
+      this.closePending();
+      if (this.state.alive) this.startAdventure(opts.thenAdv);
     } else {
       this.closePending();
     }
@@ -1960,24 +1990,30 @@ export class Game {
     if (opt.chance !== undefined) {
       if (this.rng.chance(opt.chance)) {
         if (opt.success) {
-          this.say(opt.success.text_after || '', 'event');
-          if (opt.success.text_after) this.applyEffect(opt.success, 'event');
+          if (opt.success.combat) opt.combat = opt.success.combat; // 2.0 第二层：胜路也接战斗
+          if (opt.success.text_after) {
+            this.say(opt.success.text_after, 'event');
+            this.applyEffect(opt.success, 'event');
+          }
         } else if (opt.effect) this.applyEffect(opt.effect, 'event');
       } else {
         this.say(opt.fail?.text_after || '', 'event');
         if (opt.fail?.ledger) this.applyEffect(opt.fail, 'event');
         if (opt.fail?.flags) this.applyEffect(opt.fail, 'event');
+        if (opt.fail?.combat) opt.combat = opt.fail.combat; // 2.0 第二层：败路接战斗（坑 3.1 fail.combat 旧写法）
       }
     } else {
       if (opt.effect) this.applyEffect(opt.effect, 'event');
       if (opt.text_after) this.say(opt.text_after, 'event');
       if (opt.win?.minghao) this.applyEffect(opt.win, 'event');
     }
+    // 2.0 第二层（坑 3.1 翻译层）：内容层旧写法 effect.combat 提升到顶层，让战斗真发生
+    if (!opt.combat && opt.effect?.combat) opt.combat = opt.effect.combat;
     if (!this.state.alive || this.pending !== p0) return; // 十六期：效果致死/引幽冥——旧链让位
     if (opt.sleeve_add) this.applyEffect(opt, 'event');
     if (opt.combat) {
-      this.pending = { type: 'combat', fromEvent: true, winFlag: opt.winFlag, winItem: opt.winItem, winSay: opt.winSay };
-      this.startCombat(opt.combat, { fromEvent: true, winFlag: opt.winFlag, winItem: opt.winItem, winSay: opt.winSay });
+      this.pending = { type: 'combat', fromEvent: true, winFlag: opt.winFlag, winItem: opt.winItem, winSay: opt.winSay, winFx: opt.winFx, loseFx: opt.loseFx, thenAdv: opt.thenAdv };
+      this.startCombat(opt.combat, { fromEvent: true, winFlag: opt.winFlag, winItem: opt.winItem, winSay: opt.winSay, winFx: opt.winFx, loseFx: opt.loseFx, thenAdv: opt.thenAdv });
       return;
     }
     if (opt.trigger && ADVENTURES[opt.trigger.replace('adv_', 'adv_')]) {

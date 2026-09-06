@@ -9,10 +9,9 @@
         <div class="panel-sec">
           <div class="panel-sec-title">已学功法</div>
           <div v-for="g in gongfa" :key="g.id || g.name" class="panel-row panel-item">
-            <b>【{{ g.name }}】</b><span>{{ g.desc || '' }}</span>
+            <b>【{{ g.name }}】{{ levelWord(g.level) }}</b><span>{{ g.desc || '' }}</span>
           </div>
         </div>
-        <p class="panel-hint">（招式等级小成/大成/圆满，第二层战斗核落地后填入。）</p>
       </div>
       <div class="panel-body" v-else>
         <p class="panel-empty">未学一式。</p>
@@ -30,4 +29,9 @@ defineProps({ open: Boolean });
 defineEmits(['close']);
 
 const gongfa = computed(() => (store.game && store.game.state && store.game.state.life && store.game.state.life.gongfa) || []);
+// 2.0 第二层：功法火候可视化（level 参与战斗结算，玩家看见的是"火候"）
+function levelWord(lv) {
+  if (lv === undefined || lv === null) return '';
+  return { 0: '（初窥）', 1: '（入门）', 2: '（小成）', 3: '（大成）', 4: '（圆满）' }[lv] || `（第${lv}重）`;
+}
 </script>
