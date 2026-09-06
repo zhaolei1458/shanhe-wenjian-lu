@@ -2235,7 +2235,7 @@ await (async () => {
   check('身世局五章全了结', g26.state.life.questLog.filter(q => q.id.startsWith('q_sc_')).every(q => q.status === 'completed'), 'ok');
   // 2.0 第三层：长生引导线衔接（寻访仙山→拜入名门→突破筑基→突破金丹）
   const cs1 = g26.state.life.questLog.find(q => q.id === 'q_cs_1');
-  check('长生线·四章入册', g26.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length === 4, String(g26.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length));
+  check('长生线·后段入册（4.3 起共九章）', g26.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length === 9, String(g26.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length));
   check('长生线·首章「寻访仙山」开卷', cs1 && cs1.status === 'active', cs1 ? cs1.status : 'missing');
   check('长生线·首章目标直指仙山三城', cs1 && Array.isArray(cs1.goals[0].target) && cs1.goals[0].target.includes('kunlunxu'), 'ok');
   // 长生线推进：登仙山→章结；拜师→章结
@@ -2400,8 +2400,8 @@ await (async () => {
   const csCount1 = g28d.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length;
   appendLongevity(g28d);
   const csCount2 = g28d.state.life.questLog.filter(q => q.id.startsWith('q_cs_')).length;
-  check('长生线·挂线四章', csCount1 === 4, String(csCount1));
-  check('长生线·幂等不重复', csCount2 === 4, String(csCount2));
+  check('长生线·挂线九章（4.3 后段）', csCount1 === 9, String(csCount1));
+  check('长生线·幂等不重复', csCount2 === 9, String(csCount2));
   check('长生线·金丹章压轴', g28d.state.life.questLog.find(q => q.id === 'q_cs_4').goals[0].target === 'jindan', 'ok');
 })();
 
@@ -2491,6 +2491,49 @@ await (async () => {
   check('三主线·sc 命帖只配山村线', VILLAGE_ORPHAN.matchFate.test('sc_f1') && !MODAO.matchFate.test('sc_f1') && !HUANGZU.matchFate.test('sc_f1'), 'ok');
   check('三主线·md 命帖只配魔道线', MODAO.matchFate.test('md_f2') && !VILLAGE_ORPHAN.matchFate.test('md_f2') && !HUANGZU.matchFate.test('md_f2'), 'ok');
   check('三主线·hz 命帖只配皇族线', HUANGZU.matchFate.test('hz_f3') && !VILLAGE_ORPHAN.matchFate.test('hz_f3') && !MODAO.matchFate.test('hz_f3'), 'ok');
+})();
+
+// ================= 闸三十：2.0 第四层（二）——仙界幽冥边域接入 =================
+(function () {
+  console.log('\n—— 闸三十：仙界幽冥边域 ——');
+
+  // 长生线后段结构：金丹之后接 元婴→化神→东荒→渡劫→南天门验籍（plan 4.3 验收链）
+  const g30 = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards30 = Game.rollFateCards('gate30a', g30.meta);
+  g30.rebirth(cards30[0], '登顶行者', g30.meta, 'life-g30');
+  g30.pending = null;
+  appendLongevity(g30);
+  const cs = g30.state.life.questLog.filter(q => q.id.startsWith('q_cs_'));
+  check('长生线·后段九章入册', cs.length === 9, String(cs.length));
+  const csIds = cs.map(q => q.id);
+  check('长生线·后段章序', csIds.join(',') === 'q_cs_1,q_cs_2,q_cs_3,q_cs_4,q_cs_5,q_cs_6,q_cs_7,q_cs_8,q_cs_9', csIds.join(','));
+  check('长生线·元婴章接金丹', cs.find(q => q.id === 'q_cs_5').goals[0].target === 'yuanying', 'ok');
+  check('长生线·化神章', cs.find(q => q.id === 'q_cs_6').goals[0].target === 'huashen', 'ok');
+  check('长生线·东荒妖域章（city 目标）', cs.find(q => q.id === 'q_cs_7').goals[0].target === 'donghuang', 'ok');
+  check('长生线·渡劫章', cs.find(q => q.id === 'q_cs_8').goals[0].target === 'dujie', 'ok');
+  check('长生线·南天门验籍压轴（真仙）', cs.find(q => q.id === 'q_cs_9').goals[0].target === 'zhenxian', 'ok');
+  check('长生线·东荒章任务日志可见「东荒妖域」', cs.find(q => q.id === 'q_cs_7').title === '东荒妖域', 'ok');
+  check('长生线·南天门章任务日志可见', cs.find(q => q.id === 'q_cs_9').title === '南天门验籍', 'ok');
+
+  // 幽冥接入：老死走幽冥，任务册出现「身后程·十殿审账」；走完十殿归档（plan 4.3 验收）
+  const g30b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards30b = Game.rollFateCards('gate30b', g30b.meta);
+  g30b.rebirth(cards30b[0], '归墟行者', g30b.meta, 'life-g30b');
+  g30b.pending = null;
+  g30b.die('shouzhong');
+  check('幽冥·入幽冥流程', !!g30b.state.afterlife, String(!!g30b.state.afterlife));
+  const nwQ = g30b.state.life.questLog.find(q => q.id === 'q_nw_shendian');
+  check('幽冥·任务册挂「身后程·十殿审账」', !!nwQ && nwQ.status === 'active' && nwQ.title.includes('十殿审账'), nwQ ? nwQ.title : 'missing');
+  check('幽冥·十殿审账开演（黄泉幕后有幕）', !!g30b.pending, String(!!g30b.pending));
+  g30b.finalizeDeath('shouzhong');
+  const nwQ2 = g30b.state.life.questLog.find(q => q.id === 'q_nw_shendian');
+  check('幽冥·身后程归档（盖棺置 completed）', nwQ2 && nwQ2.status === 'completed', nwQ2 ? nwQ2.status : 'missing');
+
+  // 幂等：二次入幽冥（不可能，但防重挂）+ 幽冥章不走章结管道（def 兜底不崩）
+  g30b.pending = null;
+  g30b.state.afterlife = { kind: 'shouzhong', step: 'huangquan' };
+  g30b.input('看看四周'); // afterlife 状态下 input 不走 questTick，也不崩
+  check('幽冥·afterlife 下输入不崩不推进', !!g30b.state.afterlife, 'ok');
 })();
 
 console.log(`\n${'='.repeat(40)}`);

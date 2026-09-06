@@ -19,6 +19,15 @@ export function beginNetherworld(game, kind, text) {
   life.diedOf = kind;
   state.afterlife = { kind, step: 'huangquan' };
   game.say(text || '那一日，你躺下来，就没能再起来。', 'death');
+  // 2.0 第四层（plan 4.3）：身后程入任务册——幽冥十殿审账，账要当着你的面算
+  if (Array.isArray(life.questLog) && !life.questLog.some(q => q.id === 'q_nw_shendian')) {
+    life.questLog.push({
+      id: 'q_nw_shendian', chapter: 0, title: '身后程·十殿审账',
+      desc: '黄泉路尽处，十殿阎罗按旧账册一殿一殿对账——恩怨杀誓，笔笔当面。走完十殿，喝孟婆汤，过奈何桥。',
+      goals: [],
+      status: 'active',
+    });
+  }
   game.ui.mode = 'event';
   game.nwStep('huangquan');
 }

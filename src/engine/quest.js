@@ -60,6 +60,7 @@ export function questTick(game) {
   const act = activeChapter(life);
   if (!ql || !act) return;
   const def = chapterDef(ql, act.id);
+  if (!def) return; // 2.0 第四层：幽冥章等非常规章无定义——不入章结管道（身后程由幽冥流程自管）
   let allDone = true;
   for (const g of act.goals) {
     if (g.done) continue;

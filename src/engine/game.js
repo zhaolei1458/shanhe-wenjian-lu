@@ -899,6 +899,9 @@ export class Game {
     this.state.alive = false;
     this.state.afterlife = null;
     this.ui.mode = 'dead';
+    // 2.0 第四层：幽冥程走完——任务册上的「身后程·十殿审账」了结归档
+    const nwQ = (life.questLog || []).find(q => q.id === 'q_nw_shendian');
+    if (nwQ) nwQ.status = 'completed';
     this.say(text || ({
       shouzhong: '那一日，你躺下来，就没能再起来。窗外的光景一寸寸暗下去——像一生的走马灯。',
       hengsi: '眼前一黑。',
