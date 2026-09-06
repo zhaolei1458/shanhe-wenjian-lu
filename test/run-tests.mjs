@@ -2082,6 +2082,27 @@ await (async () => {
   const ht24c = g24c.currentScene().huatou;
   check('市集念头含置办用度', ht24c.includes('置办用度'), ht24c.slice(0, 4).join('/'));
   check('念头含生计三件套', ['做工挣钱', '清点行囊', '吃点东西'].every(h => ht24c.includes(h)), ht24c.join('/').slice(0, 60));
+
+  // F：引导模式词表全可解析（二十五期：服药入口补齐 + 引导短语逐句验证）
+  const guidedPhrases = [
+    ['服药', 'use'], ['孵蛋', 'hatch'], ['题壁', 'inscribe'], ['化名青衫客', 'alias'],
+    ['以真名示人', 'realname'], ['请镇物', 'zhenwu'], ['开宗立派', 'foundsect'],
+    ['离开师门', 'leave'], ['探古墓', 'xunlong'], ['妖兽卷', 'sleeve'], ['喂它', 'feed'],
+  ];
+  for (const [ph, want] of guidedPhrases) {
+    const r = parse(ph, { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} });
+    check(`解析·引导短语「${ph}」→${want}`, r.intent === want && r.verdict !== 'miss', `${r.verdict}/${r.intent}`);
+  }
+  // 服药真链路：行囊有 herb → input('服药') 走到 useHerb（不再空回声）
+  const g24e = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards24e = Game.rollFateCards('gate24e', g24e.meta);
+  g24e.rebirth(cards24e[0], '服药行者', g24e.meta, 'life-g24e');
+  if (g24e.pending) g24e.closePending();
+  g24e.state.life.items.push({ id: 'jinchuang_1', name: '金疮药', kind: 'herb', desc: '敷上止血。' });
+  let base24e = g24e.journal.length;
+  g24e.input('服药');
+  const seg24e = g24e.journal.slice(base24e).map(x => x.text || '').join('\n');
+  check('有药可服·服药真服用', seg24e.includes('服下') && seg24e.includes('金疮药'), seg24e.slice(0, 60));
 })();
 
 console.log(`\n${'='.repeat(40)}`);

@@ -1726,7 +1726,7 @@ export class Game {
       let it = byName
         ? herbs.find(i => i.name.includes(byName) || byName.includes(i.name))
         : herbs[0];
-      if (!it && !byName) it = herbs[0];
+      if (!it) it = herbs[0]; // 二十五期修：泛称"服药"不必点名——行囊有药就服第一味
       if (it) return useHerb(this, it);
     }
     // 没有可服的药——若有器物则转「用起来」，否则空手回声
