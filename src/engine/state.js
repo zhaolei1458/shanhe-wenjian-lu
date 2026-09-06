@@ -121,6 +121,7 @@ export function initLife(state, fateCard, name) {
     mount: null,                   // 坐骑 { id, name, kind(lu/fei/shui/xiong), speed, xun, desc }（坐骑驯养）
     beastBook: [],                 // 妖兽图鉴：见过的妖兽 id（袖中录妖兽卷）
     sect: null,                    // 师门 { id, joinedYear, dutyCount }（拜师系统）
+    questLog: [],                  // 2.0 任务核：任务日志 [{ id, title, chapter, desc, goals, rewards, status }]（第一层启用；旧档读入缺省为空）
     equipped: null,                // 佩戴器物 id（装备叙事化）
     tutor: fateCard.tutor || null, // 引路人
     tutorStepsLeft: 3,             // 引路人带前三~五步

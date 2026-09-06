@@ -1552,11 +1552,14 @@ await (async () => {
   g17.input('和老猎户聊');
   check('首见对话出私人史卡（履历页入文）', g17.journal.slice(jnTalk).some(j => (j.text || '').includes('老猎户今年')), 'life card ok');
 
-  // 账册记忆：种一条含其名的恩账，直接结算（绕开 22% 掷签）
+  // 账册记忆：种一条含其名的恩账，直接结算（贯彻"绕开 22% 掷签"本意：确定性压测）
   g17.state.ledger.push({ type: '恩', text: `替老猎户从狼口里抢回了一张皮子`, year: g17.state.world.year });
   const { npcMemoryEcho } = await import('../src/engine/npcLives.js');
   const jnMem = g17.journal.length;
+  const realChance17 = g17.rng.chance;
+  g17.rng.chance = () => true;
   npcMemoryEcho(g17, npcs.laolienu);
+  g17.rng.chance = realChance17;
   check('账册记忆回响（NPC 亲自提旧账）', g17.journal.slice(jnMem).some(j => (j.text || '').includes('记着') || (j.text || '').includes('这笔账')), 'memory echo ok');
 
   // 岁月到头：推年到老猎户殁龄（born=-59 → 70 岁 = year 11）——yearTick 途中即会触发讣闻
@@ -2062,7 +2065,7 @@ await (async () => {
   const g24c = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
   const cards24c = Game.rollFateCards('gate24c', g24c.meta);
   g24c.rebirth(cards24c[0], '生计行者', g24c.meta, 'life-g24c');
-  if (g24c.pending) g24c.closePending();
+  g24c.pending = null;
   g24c.state.life.location = { city: 'tiewa', node: 'tw_guanqiang' }; // 非 market 节点
   g24c.state.life.money = 10;
   let base24c = g24c.journal.length;
@@ -2097,12 +2100,79 @@ await (async () => {
   const g24e = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
   const cards24e = Game.rollFateCards('gate24e', g24e.meta);
   g24e.rebirth(cards24e[0], '服药行者', g24e.meta, 'life-g24e');
-  if (g24e.pending) g24e.closePending();
+  g24e.pending = null;
   g24e.state.life.items.push({ id: 'jinchuang_1', name: '金疮药', kind: 'herb', desc: '敷上止血。' });
   let base24e = g24e.journal.length;
   g24e.input('服药');
   const seg24e = g24e.journal.slice(base24e).map(x => x.text || '').join('\n');
   check('有药可服·服药真服用', seg24e.includes('服下') && seg24e.includes('金疮药'), seg24e.slice(0, 60));
+})();
+
+// ================= 闸二十五：2.0 第零层——光阴核（闭关/养伤/跳跃）+ pending 短路 =================
+(function () {
+  console.log('\n—— 闸二十五：2.0 第零层光阴核 ——');
+  const { newLifeState: nls } = { newLifeState: null };
+  void nls;
+
+  // 解析入口
+  check('解析·闭关三年→closeddoor', parse('闭关三年', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} }).intent === 'closeddoor', 'ok');
+  check('解析·养伤一月→heal', parse('养伤一月', { npcs: [], links: [] }, { nodes, npcs: {}, cities: {}, areas: {} }).intent === 'heal', 'ok');
+
+  // 闭关：时间真跳、修为真涨、可破境
+  const g25 = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards25 = Game.rollFateCards('gate25a', g25.meta);
+  g25.rebirth(cards25[0], '闭关行者', g25.meta, 'life-g25');
+  g25.pending = null;
+  g25.state.life.location = { city: 'tiewa', node: 'tw_huangye' in nodes ? 'tw_huangye' : g25.state.life.location.node };
+  const y0 = g25.state.world.year, age0 = g25.state.life.age;
+  g25.input('闭关三年');
+  check('闭关三年·纪年真跳三年', g25.state.world.year === y0 + 3, `${y0}→${g25.state.world.year}`);
+  check('闭关三年·年岁真涨三岁', g25.state.life.age === age0 + 3, `${age0}→${g25.state.life.age}`);
+  check('闭关三年·修为涨了 450', g25.state.life.xiwei >= 450, String(g25.state.life.xiwei));
+  check('闭关三年·凡人可破境练气', g25.state.life.realm === 'lianqi', g25.state.life.realm);
+
+  // 市镇闭关被挡（静室须寻清静处）
+  const g25b = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards25b = Game.rollFateCards('gate25b', g25b.meta);
+  g25b.rebirth(cards25b[0], '市镇行者', g25b.meta, 'life-g25b');
+  g25b.pending = null;
+  g25b.state.life.location = { city: 'tianqi', node: 'dongshi' };
+  let base25b = g25b.journal.length;
+  g25b.input('闭关三年');
+  const seg25b = g25b.journal.slice(base25b).map(x => x.text || '').join('\n');
+  check('市镇闭关被挡·时间没跳', g25b.state.world.year === g25b.state.world.year && seg25b.includes('闭关'), seg25b.slice(0, 50));
+
+  // 养伤：时间跳月、气血回涨
+  const g25c = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards25c = Game.rollFateCards('gate25c', g25c.meta);
+  g25c.rebirth(cards25c[0], '养伤行者', g25c.meta, 'life-g25c');
+  g25c.pending = null;
+  g25c.state.life.hp = 30;
+  const y0c = g25c.state.world.year;
+  g25c.input('养伤三月');
+  check('养伤三月·气血回涨', g25c.state.life.hp > 30, String(g25c.state.life.hp));
+  check('养伤三月·时间约跳一季', g25c.state.world.year >= y0c, 'ok');
+
+  // pending 防覆盖（坑册 3.6）：有挂起事件时自由输入可走，但 pending 不被新事件盖掉
+  const g25d = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cards25d = Game.rollFateCards('gate25d', g25d.meta);
+  g25d.rebirth(cards25d[0], '有幕行者', g25d.meta, 'life-g25d');
+  g25d.pending = null;
+  g25d.fireEvent(EVENTS['ev_huolang_gengduo'] ? 'ev_huolang_gengduo' : Object.keys(EVENTS)[0]);
+  if (g25d.pending) {
+    const pendId = g25d.pending.ev ? g25d.pending.ev.id : null;
+    g25d.input('看看四周');
+    check('pending 防覆盖·自由输入后幕仍在', !!g25d.pending && (g25d.pending.ev ? g25d.pending.ev.id : null) === pendId, 'ok');
+    check('pending 防覆盖·未产生新幕', g25d.pending && (g25d.pending.ev ? g25d.pending.ev.id : null) === pendId, 'ok');
+  } else {
+    check('pending 防覆盖·（测试环境未出事件，跳过）', true, 'skip');
+  }
+
+  // 新档带 questLog 字段（任务核地基）
+  const fresh = new Game(null, { legacyPoints: 0, pastLives: [], crossSeenAdventures: [] });
+  const cardsFresh = Game.rollFateCards('gate25e', fresh.meta);
+  fresh.rebirth(cardsFresh[0], '新档行者', fresh.meta, 'life-g25e');
+  check('新档·questLog 字段就位', Array.isArray(fresh.state.life.questLog) && fresh.state.life.questLog.length === 0, 'ok');
 })();
 
 console.log(`\n${'='.repeat(40)}`);

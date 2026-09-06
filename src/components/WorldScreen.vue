@@ -64,6 +64,18 @@
       <button class="btn ghost" @click="store.submit('问天')">问天</button>
     </div>
 
+    <!-- 2.0 第零层：底导航（移动优先，拇指区在底部） -->
+    <nav class="bottom-nav">
+      <button v-for="t in NAVS" :key="t.key" class="bn-btn" :class="{ on: activePanel === t.key }" @click="activePanel = activePanel === t.key ? '' : t.key">
+        <span class="bn-ico">{{ t.ico }}</span><span class="bn-label">{{ t.label }}</span>
+      </button>
+    </nav>
+    <CharacterPanel :open="activePanel === 'char'" @close="activePanel = ''" />
+    <SkillsPanel :open="activePanel === 'skills'" @close="activePanel = ''" />
+    <InventoryPanel :open="activePanel === 'inv'" @close="activePanel = ''" />
+    <QuestPanel :open="activePanel === 'quest'" @close="activePanel = ''" />
+    <WorldPanel :open="activePanel === 'world'" @close="activePanel = ''" />
+
     <!-- 袖中录抽屉 -->
     <div v-if="store.sleeveOpen" class="sleeve-drawer">
       <div class="sd-head">
@@ -119,6 +131,21 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue';
 import { store } from '../main.js';
+import CharacterPanel from './panels/CharacterPanel.vue';
+import SkillsPanel from './panels/SkillsPanel.vue';
+import InventoryPanel from './panels/InventoryPanel.vue';
+import QuestPanel from './panels/QuestPanel.vue';
+import WorldPanel from './panels/WorldPanel.vue';
+
+// 2.0 第零层：底导航五本册页
+const NAVS = [
+  { key: 'char', label: '人物', ico: '人' },
+  { key: 'skills', label: '武学', ico: '武' },
+  { key: 'inv', label: '行囊', ico: '囊' },
+  { key: 'quest', label: '任务', ico: '事' },
+  { key: 'world', label: '天地', ico: '天' },
+];
+const activePanel = ref('');
 
 const game = computed(() => store.game);
 const inputText = ref('');

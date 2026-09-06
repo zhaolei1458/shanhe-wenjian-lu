@@ -397,6 +397,7 @@ export class Game {
   // ---------- 事件调度 ----------
   rollNodeEvents(node, forceChance = null) {
     if (this.state.afterlife) return; // 幽冥余程中不再掷市井事件（防覆盖幽冥 pending）
+    if (this.pending) return; // 2.0 第零层（坑册 3.6）：已有挂起事件时不再掷新——防覆盖玩家手上的幕
     const life = this.state.life;
     const done = life.flags.doneEvents || (life.flags.doneEvents = []);
     const pool = Object.values(EVENTS).filter(ev => {
@@ -522,7 +523,7 @@ export class Game {
   }
 
   // ---------- 光阴账 ----------
-  advanceTime(parts) {
+  advanceTime(parts, opts) {
     const life = this.state.life;
     life.dayPart = (life.dayPart || 0) + parts;
     // 二十二期 E-3：袖中录亮相——开卷两日光景，三卷册子自己"翻"出来
@@ -542,9 +543,9 @@ export class Game {
       // 节令民俗（04 册 §4.3）：换季掷签入节
       if (this.state.alive && !this.state.afterlife) this.maybeFestival();
     }
-      // 新的一天：天气与晨光
+      // 新的一天：天气与晨光（2.0 第零层：silent 大段跳岁月时不逐日刷屏）
       life.weather = this.rng.pick(WEATHERS[SEASONS[life.season]]);
-      if (this.state.alive) {
+      if (this.state.alive && !(opts && opts.silent)) {
         this.say(`——${SEASONS[life.season]}${life.day > 1 ? life.day + '日' : '朔日'}，${life.weather}。——`, 'ambient');
         advanceQualityDay(this); // 十四期：节气换气光景 + 月圆天象 + 彗星余波
       }
@@ -897,6 +898,8 @@ export class Game {
         case 'look': return this.doLook();
         case 'talk': case 'ask': return this.doTalk(p.slots, p.normalized);
         case 'cultivate': return this.doCultivate();
+        case 'closeddoor': return this.doClosedDoor(p.normalized); // 2.0 第零层：闭关跳岁月
+        case 'heal': return this.doHeal(p.normalized); // 2.0 第零层：养伤 N 月
         case 'practice': return this.doPractice();
         case 'rest': return this.doRest();
         case 'work': return this.doWork();
@@ -1523,10 +1526,68 @@ export class Game {
     }
   }
 
+  // ---------- 2.0 第零层：光阴核——大段跳岁月 ----------
+  _parseDuration(norm, unit, min, max) {
+    const NUM = { 一: 1, 二: 2, 两: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
+    const m = (norm || '').match(new RegExp('([一二两三四五六七八九十百\\d]+)\\s*' + unit));
+    if (!m) return min;
+    const t = m[1];
+    if (/^\d+$/.test(t)) return Math.max(min, Math.min(max, parseInt(t, 10)));
+    if (t.length === 1) return Math.max(min, Math.min(max, NUM[t] || min));
+    // 简易中文数：十X/十/X十/百
+    let n = 0;
+    if (t.includes('百')) return Math.max(min, Math.min(max, 100));
+    const parts = t.split('十').filter(Boolean);
+    if (parts.length === 2) n = (NUM[parts[0]] || 1) * 10 + (NUM[parts[1]] || 0);
+    else if (t.endsWith('十')) n = (NUM[parts[0]] || 1) * 10;
+    else if (t.startsWith('十')) n = 10 + (NUM[parts[0]] || 0);
+    return Math.max(min, Math.min(max, n || min));
+  }
+
+  doClosedDoor(norm) {
+    const life = this.state.life;
+    const node = nodes[life.location.node];
+    const years = this._parseDuration(norm, '年', 1, 10);
+    if (node.tags?.includes('market') || node.tags?.includes('hub')) {
+      this.say('（此地人来车往，声浪一浪接一浪——这颗心收不回来。闭关得寻个听不见市声的去处。）', 'echo');
+      return;
+    }
+    this.say(`（你择定一处静室，闭门谢客。扫榻、焚香、收心——这一坐，就是${years}年。）`, 'scene');
+    const j0 = this.journal.length;
+    for (let i = 0; i < years; i++) {
+      this.advanceTime(360, { silent: true }); // 一年=360 时辰位，静默跳跃
+      if (!this.state.alive) return; // 寿元到了就死在关里——软计时从不饶人
+    }
+    const gain = years * 150;
+    life.xiwei += gain;
+    this.say(`（出关那日，你推开房门，日光晃得你眯了眼。行囊上的尘、院里的草，都替你记着这些年。修为在静坐里涨了${gain}——气息沉实，与出关前判若两人。）\n——大衍承平${30 + this.state.world.year}年，${SEASONS[life.season]}${life.day}日。——`, 'system');
+    this.checkBreakthrough();
+    this.rollNodeEvents(node, 0.2);
+    void j0;
+  }
+
+  doHeal(norm) {
+    const life = this.state.life;
+    const months = this._parseDuration(norm, '月', 1, 12);
+    const healed = Math.min(life.maxHp - life.hp, months * 15);
+    this.say(`（你寻了间清净客栈，雇了间上房，请了大夫——这一养，就是${months}个月。药一碗一碗地喝，伤一天一天地好。）`, 'scene');
+    this.advanceTime(months * 120, { silent: true });
+    if (!this.state.alive) return;
+    if (healed > 0) {
+      life.hp += healed;
+      this.say(`（出月子那日，你活动了一下筋骨——${healed > 40 ? '伤好得七七八八，浑身是劲。' : '伤处还剩几分钝疼，但手脚听使唤了。'}）`, 'system');
+    } else {
+      this.say('（你本就无损——这几个月养的是心，不是身。）', 'system');
+    }
+    if (life.injury) {
+      for (const k of Object.keys(life.injury)) { life.injury[k] = Math.max(0, life.injury[k] - months); if (life.injury[k] <= 0) delete life.injury[k]; }
+      if (!Object.keys(life.injury).length) life.injury = null;
+    }
+  }
+
   doRest() {
     const life = this.state.life;
-    this.advanceTime(4);
-    if (!this.state.alive) return;
+    this.advanceTime(4);    if (!this.state.alive) return;
     const healed = Math.min(life.maxHp - life.hp, 25 + life.dims.gengu / 10);
     life.hp += healed;
     if (life.injury) {
