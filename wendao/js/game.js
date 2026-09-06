@@ -100,6 +100,7 @@ const Game = {
   newGame(slot, name, attrs, fate) {
     this.slot = slot;
     this.player = PlayerFactory.create(name, attrs, fate);
+    ShanHeStory.mountChapters((fate && fate.id) || 'shancun');   // 山河问剑录 · 按命帖挂载主线分线
     this.enterGame();
     Log.clear();
     /* 山河问剑录 · 开局叙事：命帖来处/软肋/钩子 + 引子 */
@@ -119,6 +120,7 @@ const Game = {
     AutoCult.abort();   // v6
     this.slot = key === 'auto' ? null : key;
     this.player = PlayerFactory.migrate(data.player);
+    ShanHeStory.mountChapters((this.player.fate && this.player.fate.id) || 'shancun');   // 山河问剑录 · 读档按命帖重挂分线
     this.enterGame();
     Log.clear();
     Log.add(`光阴倒流，你回到了 <b>${Time.label(this.player)}</b> 的这一刻。（读档成功）`, 'system');

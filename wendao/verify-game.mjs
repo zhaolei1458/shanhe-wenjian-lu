@@ -76,8 +76,9 @@ const drainStory = async (page, rounds = 60) => {
 const text = (page, sel) => page.$eval(sel, el => el.innerText).catch(() => '');
 const texts = (page, sel) => page.$$eval(sel, els => els.map(e => e.innerText));
 
-const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ['--no-sandbox', '--window-size=1280,760', '--disable-gpu', '--disable-dev-shm-usage'] });
+const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, args: ['--no-sandbox', '--window-size=1280,760', '--disable-gpu', '--disable-gpu-compositing', '--disable-dev-shm-usage'] });
 const page = await browser.newPage();
+await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);   // 规避 headless GPU 合成空转：全部 CSS 动画降级
 await page.setViewport({ width: 1280, height: 720 });
 page.on('console', m => { if (m.type() === 'error' && !/net::ERR_/.test(m.text())) consoleErrors.push(m.text().slice(0, 200)); });   // v21: 网络层资源抖动不计入
 page.on('pageerror', e => consoleErrors.push('PAGEERROR: ' + String(e).slice(0, 200)));
@@ -86,6 +87,7 @@ page.on('pageerror', e => consoleErrors.push('PAGEERROR: ' + String(e).slice(0, 
 // 注入后根治「剧情链在点击间隙弹出吞掉操作」的时序抖动（演出断言在 verify-v7 中覆盖）
 await page.evaluateOnNewDocument(() => {
   const t = setInterval(() => {
+    if (typeof window.Anim !== 'undefined') { window.Anim.enabled = false; try { document.body.classList.add('anim-off'); } catch (e) {} }   // 性能模式：战斗特效/数字动效定格，规避 headless GPU 空转
     if (!window.Story || window.Story.__silenced) return;
     clearInterval(t);
     window.Story.__silenced = true;
@@ -110,7 +112,7 @@ try {
   await page.goto(URL, { waitUntil: 'domcontentloaded' });
   await sleep(500);
   const title = await page.title();
-  title.includes('凡人问道') ? pass('T1 页面标题加载') : fail('T1 页面标题加载', title);
+  title.includes('山河问剑录') ? pass('T1 页面标题加载') : fail('T1 页面标题加载', title);
   (await page.$$('[data-action="st-newgame"]')).length === 3 ? pass('T1 三个存档位显示') : fail('T1 三个存档位', '');
   await shot(page, 'start');
 

@@ -190,7 +190,35 @@
 
   <div id="toast"></div>
   <div id="announce"></div>
+
+  <!-- ==================== 移动端竖屏提示（3.3 横屏适配） ==================== -->
+  <div id="rotate-hint">
+    <div class="rh-phone"></div>
+    <div class="rh-title">请 横 屏 游 玩</div>
+    <div class="rh-tip">山河为局，横览天下 —— 将手机横过来，开启你的仙途</div>
+  </div>
 </div>
 <script src="game.js?v=35"></script>
+<script>
+/* 山河问剑录 · 横屏锁定（尽力而为）：首次点按尝试全屏+锁横屏；
+ * 失败（iOS Safari 等）则由 #rotate-hint 竖屏遮罩兜底提示。 */
+(function () {
+  document.addEventListener('click', function () {
+    var el = document.documentElement;
+    var fs = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!fs) return;
+    try {
+      var p = fs.call(el);
+      if (p && p.then) {
+        p.then(function () {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(function () {});
+          }
+        }).catch(function () {});
+      }
+    } catch (e) { /* 忽略：遮罩兜底 */ }
+  }, { once: true });
+})();
+</script>
 </body>
 </html>
