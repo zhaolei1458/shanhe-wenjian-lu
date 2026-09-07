@@ -4,7 +4,7 @@
 //   2. 拼接产物先过 node --check 语法校验，通过才允许写盘
 //   3. 覆盖前自动备份到 attic/game.js.pre-build
 // 开发流程：编辑 js/ 下模块 → node scripts/build.mjs → 刷新页面（index.html 引用不变）
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, unlinkSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,5 +42,5 @@ if (existsSync(OUT)) {
   copyFileSync(OUT, join(ROOT, 'attic', 'game.js.pre-build'));
 }
 writeFileSync(OUT, output, 'utf8');
-execSync(`del /q "${tmp}"`, { stdio: 'ignore', shell: 'cmd.exe' });
+try { unlinkSync(tmp); } catch {} // 跨平台清理临时文件（旧写法 cmd.exe del 在 Linux 跑批机上 ENOENT）
 console.log(`✅ 构建完成：${OUT}（${(output.length / 1024).toFixed(0)} KB，${ORDER.length} 个模块）`);
