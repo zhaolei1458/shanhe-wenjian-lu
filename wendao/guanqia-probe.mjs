@@ -145,6 +145,56 @@ const giftAfter = await page.evaluate(() => { Utils.chance = window.__origChance
 giftT >= 1 && giftAfter.task === null
   ? pass('T7 复命获师赐【破境丹·金丹】——师门直接喂主线') : fail('T7 师命馈丹', JSON.stringify(giftAfter));
 
+/* T8 3.7b 贴符护道：天劫第四策——无符禁用 / 有符耗符渡劫 */
+const tfT = await page.evaluate(() => {
+  const p = Game.player;
+  p.realmIdx = 1; p.layer = 3; p.exp = GameData.layerNeed(1, 3); p.expOverflow = 0;
+  p.attrs.comp = 10; p.insight = 100; p.karma = 0; p.fortune = 0;
+  Bag.addItem('pill_pj2', 1);
+  delete p.bag['tal_hujie'];
+  window.__origChance2 = Utils.chance; Utils.chance = () => true;   // 钳必成
+  void Cultivate.breakthrough();
+  return p.realmIdx;
+});
+await sleep(1200);
+const tfBtn = await page.evaluate(() => {
+  const b = document.querySelector('[data-action="trib-strategy"][data-strategy="talFu"]');
+  return b ? { exists: true, disabled: b.disabled } : { exists: false };
+});
+await page.evaluate(() => { Bag.addItem('tal_hujie', 1); Tribulation.render(); });
+await sleep(200);
+const tfBtn2 = await page.evaluate(() => document.querySelector('[data-action="trib-strategy"][data-strategy="talFu"]').disabled);
+await page.evaluate(() => document.querySelector('[data-action="trib-strategy"][data-strategy="talFu"]').click());
+await sleep(4200);
+const tfState = await page.evaluate(() => {
+  const p = Game.player;
+  document.getElementById('tribulation-modal')?.classList.add('hidden');
+  document.getElementById('dao-modal')?.classList.add('hidden');
+  document.getElementById('popup-modal')?.classList.add('hidden');
+  if (UI._popupResolve) UI.popupChoose(0);
+  p.pendingDao = false;
+  Utils.chance = window.__origChance2;
+  return { realm: p.realmIdx, tal: Bag.count('tal_hujie') };
+});
+(tfT === 1 && tfBtn.exists && tfBtn.disabled === true && tfBtn2 === false && tfState.realm === 2 && tfState.tal === 0)
+  ? pass('T8 贴符护道：无符禁用→补符可点→耗符渡劫功成（晋入金丹）')
+  : fail('T8 贴符护道', JSON.stringify({ tfT, tfBtn, tfBtn2, ...tfState }));
+
+/* T9 3.7b 功法层数反哺修炼：cultPct += 总层数（上限20） */
+const gfT = await page.evaluate(() => {
+  const p = Game.player;
+  const saved = p.gongfa;
+  p.gongfa = { gf_jianqi: { level: 5, exp: 0 }, gf_hansha: { level: 3, exp: 0 } };
+  const b = Stat.gongfaBonus(p);
+  p.gongfa = { gf_jianqi: { level: 30, exp: 0 } };
+  const capped = Stat.gongfaBonus(p);
+  p.gongfa = saved;
+  return { eight: b.cultPct || 0, cap: capped.cultPct || 0 };
+});
+gfT.eight === 8 && gfT.cap === 20
+  ? pass('T9 功法层数反哺修炼：总层数8层 → 行功效率 +8%，上限钳 +20%')
+  : fail('T9 功法反哺', JSON.stringify(gfT));
+
 console.log(`\n===== 关卡探针：${passN} 过 / ${failN} 败，console 错误 ${errors.length} =====`);
 errors.slice(0, 5).forEach(e => console.log('  ' + e));
 await page.screenshot({ path: 'shots/guanqia-probe.png' });

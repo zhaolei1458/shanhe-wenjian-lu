@@ -1062,7 +1062,7 @@ const Battle = {
     }
     // v18 4) 自动祭符：符修优先，伤害符/控制符（v20：保留张数可配置）
     if (p.dao === 'talisman') {
-      const talList = Object.entries(p.bag).filter(([id]) => GameData.ITEMS[id] && GameData.ITEMS[id].type === 'talisman' && p.bag[id] > (cfg.tal || 0));
+      const talList = Object.entries(p.bag).filter(([id]) => { const d = GameData.ITEMS[id]; return d && d.type === 'talisman' && !d.tribOnly && p.bag[id] > (cfg.tal || 0); });
       if (talList.length) {
         // 优先伤害符，其次控制符
         const dmgTal = talList.find(([id]) => GameData.ITEMS[id].fkind === 'damage');
@@ -1654,7 +1654,7 @@ const Battle = {
       const pills = Object.keys(p.bag)
         .filter(id => {
           const d = GameData.ITEMS[id];
-          return d && (d.type === 'pill' || d.type === 'talisman');
+          return d && (d.type === 'pill' || (d.type === 'talisman' && !d.tribOnly));
         })
         .map(id => `<button class="btn btn-sm" data-action="bt-item" data-item="${id}" ${B.busy ? 'disabled' : ''}>
           ${GameData.ITEMS[id].name} ×${p.bag[id]}</button>`);

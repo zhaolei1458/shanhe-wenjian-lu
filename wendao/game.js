@@ -1280,6 +1280,7 @@ const GameData = {
     tal_fuling:   { name: '缚灵符', type: 'talisman', grade: 2, price: 70, ecoPrice: true, desc: '符光化索缚敌身——敌方身法迟滞三成，持续两回合（战斗中可用，必中）。', fkind: 'slow', power: 30, rounds: 2 },
     tal_shigu:    { name: '蚀骨符', type: 'talisman', grade: 2, price: 75, ecoPrice: true, desc: '蚀骨腐甲——敌方防御剧降三成五，持续两回合（战斗中可用，必中）。', fkind: 'defdown', power: 35, rounds: 2 },
     tal_bingpo:   { name: '冰魄符', type: 'talisman', grade: 3, price: 160, ecoPrice: true, desc: '冰魄封形——寒气封敌周身，使其下一回合无法动弹（战斗中可用，必中；强敌抵抗几率略高）。', fkind: 'freeze', rounds: 1 },
+    tal_hujie:    { name: '护劫符', type: 'talisman', grade: 3, price: 260, ecoPrice: true, tribOnly: true, desc: '三清护劫符——渡劫时可择「贴符护道」：成算高于借地躲劫；纵然劫败，符罡亦护住根基（修为多存两成，心魔不侵）。符坊元婴起可绘。' },
     tal_posha:    { name: '破煞符', type: 'talisman', grade: 3, price: 180, ecoPrice: true, power: 4.6, desc: '破军煞符，一符破万法（战斗中造成约4.6倍攻击伤害，符光必中，并使敌方破防两成）。', fkind: 'damage', debuff: { defdown: 20, rounds: 2 } },
     /* ---- 功法 ---- */
     gf_tuna:    { name: '吐纳诀',       type: 'gongfa', gtype: 'support', grade: 0, price: 200,   desc: '最基础的吐纳法门，可提升修炼效率。', bonus: { cult: [6, 3] } },
@@ -4990,6 +4991,10 @@ const Stat = {
       if (!mst || g.level < GongfaSys.maxLevel(def)) continue;
       for (const [k, v] of Object.entries(mst.fx)) total[k] = (total[k] || 0) + v;
     }
+    // v22 3.7b 卡5：功法层数反哺修炼——参悟愈深，行功愈顺（总层数 ×1%，上限 +20%）
+    let lvSum = 0;
+    for (const g of Object.values(p.gongfa)) lvSum += (g.level || 1);
+    if (lvSum > 0) total.cultPct = (total.cultPct || 0) + Math.min(20, lvSum);
     return total;
   },
   /** v19 已激活的道韵列表（功法页展示；v20 扩池合并） */
@@ -8239,6 +8244,7 @@ const AuctionSys = {
     { id: 'gf_tiangang', grade: 2 }, { id: 'm_gupian', grade: 4 }, { id: 'pill_taichu', grade: 4 },
     { id: 'fruit_tianji', grade: 4 }, { id: 'w_zhuxian', grade: 3 }, { id: 'gf_jianxin', grade: 5 },
     { id: 'egg_fengbao', grade: 2 }, { id: 'tal_bingpo', grade: 3 }, { id: 'map_gu', grade: 3 },
+    { id: 'tal_hujie', grade: 3 },
   ],
   state(p) {
     const day = Math.floor(p.day || 0);
@@ -8637,7 +8643,7 @@ const CraftSys = {
     const pool = ['tal_huoshe', 'tal_zilei'];
     if (p.realmIdx >= 1) pool.push('tal_jinguang', 'tal_jifengfu');
     if (p.realmIdx >= 2) pool.push('tal_fuling', 'tal_shigu');
-    if (p.realmIdx >= 3) pool.push('tal_bingpo');
+    if (p.realmIdx >= 3) pool.push('tal_bingpo', 'tal_hujie');   // v22 3.7b：护劫符入池——渡劫用符的门路
     if (p.realmIdx >= 4) pool.push('tal_posha');
     const out = {};
     for (let i = 0; i < qty; i++) {
@@ -8681,6 +8687,7 @@ const Tribulation = {
       endure: Utils.clamp(S.base * 0.82 * mult, 3, 97),    // 硬抗：最低，成则根基深厚厚赐
       artifact: Utils.clamp(S.base * 1.3 * mult, 3, 97),   // 法宝挡劫：最高
       hide: Utils.clamp(S.base * 1.0 * mult, 3, 97),       // 借地躲劫：居中
+      talFu: Utils.clamp(S.base * 1.15 * mult, 3, 97),     // v22 3.7b 贴符护道：居中偏上，败亦护根基
     };
   },
   async run(bonus = 0) {
@@ -8721,6 +8728,7 @@ const Tribulation = {
     const p = Game.player;
     const c = this.chances();
     const art = S.artifact ? GameData.ITEMS[S.artifact.id] : null;
+    const hasTal = Bag.count('tal_hujie') > 0;   // v22 3.7b：实时查符，避免 run 时快照过期
     const gradeName = GameData.GRADE_NAMES[this.artifactGrade(S.target)];
     document.getElementById('trib-box').innerHTML = `
       <div class="battle-head" style="color:var(--gold)">— 天 劫 将 至 —</div>
@@ -8741,6 +8749,11 @@ const Tribulation = {
           <span class="trib-name">借地躲劫</span>
           <span class="trib-chance">成算 ${c.hide.toFixed(0)}%</span>
           <span class="trib-note">成功率居中 · 成亦无得，欺天而过，孽障 +10</span>
+        </button>
+        <button class="btn trib-opt" data-action="trib-strategy" data-strategy="talFu" ${S.busy || !hasTal ? 'disabled' : ''}>
+          <span class="trib-name">贴符护道</span>
+          <span class="trib-chance">成算 ${c.talFu.toFixed(0)}%</span>
+          <span class="trib-note">${hasTal ? `耗去一张【护劫符】（现有 ${Bag.count('tal_hujie')} 张）` : '需一张【护劫符】（符坊元婴起可绘，拍卖行偶现）'} · 成算高于借地 · 纵然劫败亦护根基：修为多存两成，心魔不侵</span>
         </button>
       </div>
       <div id="trib-log" class="trib-log"></div>`;
@@ -8771,7 +8784,13 @@ const Tribulation = {
       else p.equipped.armor = null;
       Log.add(`你祭出 <b>${art.name}</b>，宝光冲霄，替你硬撼天雷！`, 'info');
     }
-    const names = { endure: '以肉身硬抗天劫', artifact: '以法宝抵挡天劫', hide: '遁入地脉借地躲劫' };
+    // v22 3.7b 贴符护道：耗去一张护劫符
+    if (strategy === 'talFu') {
+      if (Bag.count('tal_hujie') < 1) { S.busy = false; this.render(); return; }
+      Bag.removeItem('tal_hujie', 1);
+      Log.add('你取出一张【护劫符】贴于眉心，符罡化作三清虚影护住周身道基！', 'info');
+    }
+    const names = { endure: '以肉身硬抗天劫', artifact: '以法宝抵挡天劫', hide: '遁入地脉借地躲劫', talFu: '贴符护道，以符罡挡劫' };
     this.log(`你横下心来——${names[strategy]}！`, 'log-system');
     await Utils.sleep(700);
     // 天劫异象（心魔之权重随孽障增长）
@@ -8830,11 +8849,13 @@ const Tribulation = {
       UI.announce(`渡劫功成 · 晋入${GameData.REALM_NAMES[p.realmIdx]}期`, 'gold');   // v4
       UI.toast(`渡劫成功！${GameData.REALM_NAMES[p.realmIdx]}期`);
     } else {
-      if (typeof XinmoSys !== 'undefined') XinmoSys.add(p, 8, '渡劫失利');
+      if (strategy !== 'talFu' && typeof XinmoSys !== 'undefined') XinmoSys.add(p, 8, '渡劫失利');
+      if (strategy === 'talFu') this.log('符罡碎裂如金玉之音——劫威虽重，你的道基被护得妥妥当当。', 'log-gain');
       // §24 渡劫虚弱期：道侣/结拜概率护法
       const aid = NpcSys.tryAid(p, 'trib');
-      // v10 境界特性 · 劫体（渡劫起）：失利保留九成修为
-      const keepPct = p.realmIdx >= 8 ? 0.9 : (aid ? 0.8 : 0.6);
+      // v10 境界特性 · 劫体（渡劫起）：失利保留九成修为；v22 3.7b 护劫符：修为多存两成
+      let keepPct = p.realmIdx >= 8 ? 0.9 : (aid ? 0.8 : 0.6);
+      if (strategy === 'talFu') keepPct = Math.min(1, keepPct + 0.2);
       let insGain;
       if (aid) {
         p.exp = Math.round(GameData.layerNeed(p.realmIdx, 3) * keepPct);
@@ -12285,7 +12306,7 @@ const Battle = {
     }
     // v18 4) 自动祭符：符修优先，伤害符/控制符（v20：保留张数可配置）
     if (p.dao === 'talisman') {
-      const talList = Object.entries(p.bag).filter(([id]) => GameData.ITEMS[id] && GameData.ITEMS[id].type === 'talisman' && p.bag[id] > (cfg.tal || 0));
+      const talList = Object.entries(p.bag).filter(([id]) => { const d = GameData.ITEMS[id]; return d && d.type === 'talisman' && !d.tribOnly && p.bag[id] > (cfg.tal || 0); });
       if (talList.length) {
         // 优先伤害符，其次控制符
         const dmgTal = talList.find(([id]) => GameData.ITEMS[id].fkind === 'damage');
@@ -12877,7 +12898,7 @@ const Battle = {
       const pills = Object.keys(p.bag)
         .filter(id => {
           const d = GameData.ITEMS[id];
-          return d && (d.type === 'pill' || d.type === 'talisman');
+          return d && (d.type === 'pill' || (d.type === 'talisman' && !d.tribOnly));
         })
         .map(id => `<button class="btn btn-sm" data-action="bt-item" data-item="${id}" ${B.busy ? 'disabled' : ''}>
           ${GameData.ITEMS[id].name} ×${p.bag[id]}</button>`);

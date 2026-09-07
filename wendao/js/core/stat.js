@@ -27,6 +27,10 @@ const Stat = {
       if (!mst || g.level < GongfaSys.maxLevel(def)) continue;
       for (const [k, v] of Object.entries(mst.fx)) total[k] = (total[k] || 0) + v;
     }
+    // v22 3.7b 卡5：功法层数反哺修炼——参悟愈深，行功愈顺（总层数 ×1%，上限 +20%）
+    let lvSum = 0;
+    for (const g of Object.values(p.gongfa)) lvSum += (g.level || 1);
+    if (lvSum > 0) total.cultPct = (total.cultPct || 0) + Math.min(20, lvSum);
     return total;
   },
   /** v19 已激活的道韵列表（功法页展示；v20 扩池合并） */

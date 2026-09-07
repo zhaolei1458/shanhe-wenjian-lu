@@ -27,6 +27,7 @@ const AuctionSys = {
     { id: 'gf_tiangang', grade: 2 }, { id: 'm_gupian', grade: 4 }, { id: 'pill_taichu', grade: 4 },
     { id: 'fruit_tianji', grade: 4 }, { id: 'w_zhuxian', grade: 3 }, { id: 'gf_jianxin', grade: 5 },
     { id: 'egg_fengbao', grade: 2 }, { id: 'tal_bingpo', grade: 3 }, { id: 'map_gu', grade: 3 },
+    { id: 'tal_hujie', grade: 3 },
   ],
   state(p) {
     const day = Math.floor(p.day || 0);

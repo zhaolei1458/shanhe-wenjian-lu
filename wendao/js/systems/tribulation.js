@@ -28,6 +28,7 @@ const Tribulation = {
       endure: Utils.clamp(S.base * 0.82 * mult, 3, 97),    // 硬抗：最低，成则根基深厚厚赐
       artifact: Utils.clamp(S.base * 1.3 * mult, 3, 97),   // 法宝挡劫：最高
       hide: Utils.clamp(S.base * 1.0 * mult, 3, 97),       // 借地躲劫：居中
+      talFu: Utils.clamp(S.base * 1.15 * mult, 3, 97),     // v22 3.7b 贴符护道：居中偏上，败亦护根基
     };
   },
   async run(bonus = 0) {
@@ -68,6 +69,7 @@ const Tribulation = {
     const p = Game.player;
     const c = this.chances();
     const art = S.artifact ? GameData.ITEMS[S.artifact.id] : null;
+    const hasTal = Bag.count('tal_hujie') > 0;   // v22 3.7b：实时查符，避免 run 时快照过期
     const gradeName = GameData.GRADE_NAMES[this.artifactGrade(S.target)];
     document.getElementById('trib-box').innerHTML = `
       <div class="battle-head" style="color:var(--gold)">— 天 劫 将 至 —</div>
@@ -88,6 +90,11 @@ const Tribulation = {
           <span class="trib-name">借地躲劫</span>
           <span class="trib-chance">成算 ${c.hide.toFixed(0)}%</span>
           <span class="trib-note">成功率居中 · 成亦无得，欺天而过，孽障 +10</span>
+        </button>
+        <button class="btn trib-opt" data-action="trib-strategy" data-strategy="talFu" ${S.busy || !hasTal ? 'disabled' : ''}>
+          <span class="trib-name">贴符护道</span>
+          <span class="trib-chance">成算 ${c.talFu.toFixed(0)}%</span>
+          <span class="trib-note">${hasTal ? `耗去一张【护劫符】（现有 ${Bag.count('tal_hujie')} 张）` : '需一张【护劫符】（符坊元婴起可绘，拍卖行偶现）'} · 成算高于借地 · 纵然劫败亦护根基：修为多存两成，心魔不侵</span>
         </button>
       </div>
       <div id="trib-log" class="trib-log"></div>`;
@@ -118,7 +125,13 @@ const Tribulation = {
       else p.equipped.armor = null;
       Log.add(`你祭出 <b>${art.name}</b>，宝光冲霄，替你硬撼天雷！`, 'info');
     }
-    const names = { endure: '以肉身硬抗天劫', artifact: '以法宝抵挡天劫', hide: '遁入地脉借地躲劫' };
+    // v22 3.7b 贴符护道：耗去一张护劫符
+    if (strategy === 'talFu') {
+      if (Bag.count('tal_hujie') < 1) { S.busy = false; this.render(); return; }
+      Bag.removeItem('tal_hujie', 1);
+      Log.add('你取出一张【护劫符】贴于眉心，符罡化作三清虚影护住周身道基！', 'info');
+    }
+    const names = { endure: '以肉身硬抗天劫', artifact: '以法宝抵挡天劫', hide: '遁入地脉借地躲劫', talFu: '贴符护道，以符罡挡劫' };
     this.log(`你横下心来——${names[strategy]}！`, 'log-system');
     await Utils.sleep(700);
     // 天劫异象（心魔之权重随孽障增长）
@@ -177,11 +190,13 @@ const Tribulation = {
       UI.announce(`渡劫功成 · 晋入${GameData.REALM_NAMES[p.realmIdx]}期`, 'gold');   // v4
       UI.toast(`渡劫成功！${GameData.REALM_NAMES[p.realmIdx]}期`);
     } else {
-      if (typeof XinmoSys !== 'undefined') XinmoSys.add(p, 8, '渡劫失利');
+      if (strategy !== 'talFu' && typeof XinmoSys !== 'undefined') XinmoSys.add(p, 8, '渡劫失利');
+      if (strategy === 'talFu') this.log('符罡碎裂如金玉之音——劫威虽重，你的道基被护得妥妥当当。', 'log-gain');
       // §24 渡劫虚弱期：道侣/结拜概率护法
       const aid = NpcSys.tryAid(p, 'trib');
-      // v10 境界特性 · 劫体（渡劫起）：失利保留九成修为
-      const keepPct = p.realmIdx >= 8 ? 0.9 : (aid ? 0.8 : 0.6);
+      // v10 境界特性 · 劫体（渡劫起）：失利保留九成修为；v22 3.7b 护劫符：修为多存两成
+      let keepPct = p.realmIdx >= 8 ? 0.9 : (aid ? 0.8 : 0.6);
+      if (strategy === 'talFu') keepPct = Math.min(1, keepPct + 0.2);
       let insGain;
       if (aid) {
         p.exp = Math.round(GameData.layerNeed(p.realmIdx, 3) * keepPct);
