@@ -240,6 +240,7 @@ const UI = {
       { id: 'cave', name: '洞府' },
       { id: 'map', name: '游历' },
       { id: 'jianghu', name: '江湖' },
+      { id: 'master', name: '师承' },
       { id: 'shop', name: '坊市' },
       { id: 'sect', name: '宗门' },
       { id: 'gongfa', name: '功法' },
@@ -252,9 +253,11 @@ const UI = {
       || !!p.canReincarnate;
     const showMapDot = !!(p.world && p.world.pending);
     const showJianghuDot = NpcSys.grudgeCount(p) > 0 || (typeof PersonalSys !== 'undefined' && PersonalSys.anyAvailable(p));   // v19 个人线待续谈
+    const showMasterDot = (typeof MasterSys !== 'undefined') ? MasterSys.dot(p) : false;   // 3.6 师承待办
     const htmls = tabs.map(t => {
       const dot = (t.id === 'sect' && showSectDot) || (t.id === 'cultivate' && showCultDot)
-        || (t.id === 'map' && showMapDot) || (t.id === 'jianghu' && showJianghuDot);
+        || (t.id === 'map' && showMapDot) || (t.id === 'jianghu' && showJianghuDot)
+        || (t.id === 'master' && showMasterDot);
       const lock = Guide.tabLocked(t.id);   // v6：分步解锁
       return `<button class="tab-btn ${Game.activeTab === t.id ? 'active' : ''} ${lock ? 'locked' : ''}" data-action="act-tab" data-tab="${t.id}" ${lock ? `title="${lock}"` : ''}>${lock ? '🔒' : ''}${t.name}${dot ? '<span class="dot"></span>' : ''}</button>`;
     });
@@ -277,6 +280,7 @@ const UI = {
       jianghu: () => this.renderNpcTab(),
       shop: () => this.renderShopTab(),
       sect: () => this.renderSectTab(),
+      master: () => this.renderMasterTab(),   // 3.6 师承
       gongfa: () => this.renderGongfaTab(),
     }[Game.activeTab];
     // v21：宽屏双列栅格——独立卡片构成的页签并排铺满，消灭大片留白
@@ -709,6 +713,7 @@ const UI = {
         `<button class="btn btn-sm" data-action="npc-befriend" data-npc="${d.id}">结交（${Utils.fmtNum(NpcSys.befriendCost(p, d.id))}灵石）</button>`,
         `<button class="btn btn-sm" data-action="npc-spar" data-npc="${d.id}">切磋</button>`,
         s.met ? `<button class="btn btn-sm" data-action="npc-gift" data-npc="${d.id}">赠礼（${Utils.fmtNum(Math.round(30 * GameData.stoneEco(s.realmIdx)))}灵石）</button>` : '',
+        MasterSys.isCandidate(p, d.id) && s.met ? `<button class="btn btn-sm btn-primary" data-action="npc-baishi" data-npc="${d.id}">执弟子礼</button>` : '',
         s.met && s.rel >= 30 ? `<button class="btn btn-sm" data-action="npc-discuss" data-npc="${d.id}">论道</button>` : '',
         PersonalSys.next(p, d.id) ? `<button class="btn btn-sm btn-primary" data-action="npc-line" data-npc="${d.id}" title="${Utils.esc((GameData.PERSONAL[d.id].acts[(p.personal[d.id] || 0)] || {}).brief || '')}">续谈 · ${Utils.esc(GameData.PERSONAL[d.id].arc)}</button>` : '',
         s.rel >= 15 && p.partner !== d.id ? `<button class="btn btn-sm btn-danger" data-action="npc-betray" data-npc="${d.id}">背刺夺宝</button>` : '',
@@ -1015,6 +1020,85 @@ const UI = {
         ${auctionSection}
         ${donateSection}
       </div>`;
+  },
+
+  /* ---------- 3.6 师承页签 ---------- */
+  renderMasterTab() {
+    const p = Game.player;
+    MasterSys.checkInheritance(p);   // 师父身陨 → 衣钵（惰性触发）
+    const m = MasterSys.master(p);
+    if (!m) {
+      const rows = Object.keys(MasterSys.DEFS).map(id => {
+        const D = MasterSys.DEFS[id];
+        const d = NpcSys.def(id), s = NpcSys.state(p, id);
+        if (!d || !s) return '';
+        const gap = s.realmIdx > p.realmIdx;
+        const canAsk = MasterSys.isCandidate(p, id) && s.met;
+        const relOk = s.rel >= D.bondNeed;
+        const trialTxt = D.trial.kind === 'spar' ? '切磋获胜一场' : D.trial.items.map(([i2, n2]) => `${GameData.ITEMS[i2].name}×${n2}`).join('、');
+        const status = !gap ? '<span class="tag">境界未至</span>'
+          : !s.met ? '<span class="tag">素未谋面 · 江湖游历可遇</span>'
+          : relOk ? '<span class="tag safe">可递帖</span>'
+          : `<span class="tag">交情 ${s.rel}/${D.bondNeed}</span>`;
+        return `<div class="card">
+          <div class="card-title">${Art.portrait(Art.npcLook(d))}${d.name} <span style="color:var(--text-faint);font-size:12px">${d.title} · ${D.line}一脉 · ${GameData.REALM_NAMES[s.realmIdx]}期</span> ${status}</div>
+          <div class="card-desc">${d.desc}<br>考验【${D.trial.name}】：${trialTxt}。传功可授【<b>${D.teach.name}</b>】。</div>
+          ${canAsk ? `<div class="action-row"><button class="btn btn-sm btn-primary" data-action="npc-baishi" data-npc="${id}">执弟子礼</button></div>` : ''}
+        </div>`;
+      }).join('');
+      return `<div class="card"><div class="card-title">✦ 师承</div>
+        <div class="card-desc">入门墙不在名头，在人选。散人高人散落江湖，游历可遇。<br>递帖三关：<b>交情到位 → 过一场考验 → 奉礼叩首</b>。师者，所以传道授业解惑也。</div></div>${rows}`;
+    }
+    const d = NpcSys.def(m.npcId), s = NpcSys.state(p, m.npcId), D = MasterSys.DEFS[m.npcId];
+    if (m.stage === 'dead') {
+      return `<div class="card"><div class="card-title">🕯 先师之位 · ${d.name}</div>
+        <div class="card-desc">${d.desc}<br><span class="neg">斯人已逝，衣钵犹在。师父的账，如今是你的账。</span></div>
+        <div class="card-desc">受教：${m.taught.map(g => GameData.ITEMS[g].name).join('、') || '——'}　师赐：${m.gifts.length} 件</div></div>
+        <div class="card"><div class="card-title">✦ 另投名师</div><div class="card-desc">先师既去，你可另拜他人。江湖路远，所学不辍。</div></div>`;
+    }
+    if (m.stage === 'trial') {
+      const ready = MasterSys.trialReady(p);
+      let prog = '';
+      if (D.trial.kind === 'spar') {
+        const won = (s.sparWins || 0) > m.trial.wins0;
+        prog = won ? '切磋已胜——师父没说话，但眼里有三分认可。' : '考验方式：与师父切磋，胜一场（江湖页切磋）。';
+      } else {
+        prog = D.trial.items.map(([i2, n2]) => `${GameData.ITEMS[i2].name}（持有 ${Bag.count(i2)}/${n2}）`).join('、');
+      }
+      return `<div class="card"><div class="card-title">考验中 · 【${D.trial.name}】<span class="tag">${D.line}一脉</span></div>
+        <div class="card-desc">${D.trial.desc}</div>
+        <div class="card-desc">${prog}</div>
+        ${ready ? `<div class="action-row"><button class="btn btn-primary" data-action="m-offer">奉礼叩首 · 拜入门墙</button></div>` : ''}
+      </div>`;
+    }
+    // active
+    const today = MasterSys.today(p);
+    const qinganDone = m.qinganDay === today;
+    const lundaoDone = m.lundaoDay === today;
+    const task = m.task;
+    const taskDone = task && (task.type === 'kill' ? task.progress >= task.need : Bag.count(task.target) >= task.need);
+    const taughtAll = m.taught.includes(D.teach.gongfa);
+    const teachOk = !taughtAll && m.bond >= 60 && p.realmIdx >= D.teach.needRealm;
+    const quip = D.quips[m.bond % D.quips.length];
+    const taskHtml = task
+      ? `<div class="shop-row"><div class="gf-info"><div class="gf-name">${task.name}</div>
+          <div class="gf-desc">${task.desc} —— 进度 ${task.type === 'kill' ? `${task.progress}/${task.need}` : `持有 ${Bag.count(task.target)}/${task.need}`}</div></div>
+          ${taskDone ? `<button class="btn btn-sm btn-primary" data-action="m-task-submit">复命</button>` : ''}</div>`
+      : `<div class="action-row"><button class="btn btn-sm" data-action="m-task-accept">领师命</button></div>`;
+    return `
+    <div class="card">
+      <div class="card-title">${Art.portrait(Art.npcLook(d))}${d.name} <span style="color:var(--text-faint);font-size:12px">${d.title} · ${D.line}一脉 · 师父</span> <span class="tag safe">敬师 ${m.bond} · ${MasterSys.bondLabel(m.bond)}</span></div>
+      <div class="card-desc"><span style="color:var(--text-faint)">${d.name}：${quip}</span></div>
+      <div class="action-row">
+        <button class="btn btn-sm" data-action="m-qingan" ${qinganDone ? 'disabled' : ''}>请安</button>
+        <button class="btn btn-sm" data-action="m-lundao" ${lundaoDone ? 'disabled' : ''}>论道</button>
+        <button class="btn btn-sm ${teachOk ? 'btn-primary' : ''}" data-action="m-teach" title="敬师 60 且境界到 ${GameData.REALM_NAMES[D.teach.needRealm]}期可求传功">${taughtAll ? '已传功' : '求传功 · ' + D.teach.name}</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">✦ 师命</div>${taskHtml}</div>
+    <div class="card"><div class="card-title">✦ 师门旧事</div>
+      <div class="card-desc">入门 ${this.today - 0 + (this.today ? 0 : 0)}${''}于第 ${m.joinedDay + 1} 日 · 受教：${m.taught.map(g => GameData.ITEMS[g].name).join('、') || '——'}<br>师赐 ${m.gifts.length} 件：${m.gifts.map(g => GameData.ITEMS[g].name).join('、') || '——'}</div>
+    </div>`;
   },
 
   renderSectTab() {

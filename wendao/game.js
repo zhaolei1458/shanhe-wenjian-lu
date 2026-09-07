@@ -2062,6 +2062,19 @@ const GameData = {
     { id: 'n22', name: '红绡',   title: '血罗刹',     sect: null,      talent: 4, realm: 2, kin: [],      temper: '危险', desc: '行走黑暗中的女修，美艳危险，亦正亦邪，恩怨分明。' },
     { id: 'n23', name: '老酒鬼', title: '醉道人',     sect: null,      talent: 5, realm: 3, kin: [],      temper: '癫狂', desc: '抱着酒葫芦云游四方的疯道人，偶有惊世之言，深藏不露。' },
     { id: 'n24', name: '燕回时', title: '归雁剑侠',   sect: null,      talent: 4, realm: 1, kin: [],      temper: '侠气', desc: '路见不平必拔刀的游侠剑客，宁折不弯。' },
+    /* ---- 3.6 名宿补全：五宗掌门/堂主/老祖（设计-3.6-师承与门派恩仇） ---- */
+    { id: 'n25', name: '玄真子',   title: '青云掌门',   sect: 'qingyun',  talent: 5, realm: 6, kin: [], temper: '冷厉', desc: '执掌青云三百载，佩剑「斩尘」三十年未出鞘，出鞘必见血光。' },
+    { id: 'n26', name: '楚断岳',   title: '执剑堂主',   sect: 'qingyun',  talent: 4, realm: 4, kin: [], temper: '豪爽', desc: '青云执剑堂堂主，执法无私，门规比剑更利。' },
+    { id: 'n27', name: '柳守拙',   title: '守阁老人',   sect: 'qingyun',  talent: 4, realm: 5, kin: [], temper: '淡泊', desc: '藏经阁看门人，扫了一辈子剑痕，扫出来的都是剑意。' },
+    { id: 'n28', name: '青虚老祖', title: '太上长老',   sect: 'qingyun',  talent: 5, realm: 7, kin: [], temper: '孤傲', desc: '闭关百年，宗门存亡之秋方才现世，现世必惊天动地。' },
+    { id: 'n29', name: '温百草',   title: '丹霞谷主',   sect: 'danxia',   talent: 5, realm: 5, kin: [], temper: '温润', desc: '丹道国手，一炉能出九转还魂丹，谷中丹香因他而起。' },
+    { id: 'n30', name: '曲青蘅',   title: '药堂堂主',   sect: 'danxia',   talent: 3, realm: 3, kin: [], temper: '冷厉', desc: '百草园里寸草皆灵，认错一株药草要罚抄药典百遍。' },
+    { id: 'n31', name: '焦苦竹',   title: '守炉人',     sect: 'danxia',   talent: 4, realm: 4, kin: [], temper: '古怪', desc: '守镇谷丹炉六十年，点头的意思只有他自己懂。' },
+    { id: 'n32', name: '段铜山',   title: '护商统领',   sect: 'wanbao',   talent: 4, realm: 4, kin: [], temper: '豪爽', desc: '铁掌护商队，走遍三大险地，护过的商队没丢过一箱。' },
+    { id: 'n33', name: '段万金',   title: '商会老祖',   sect: 'wanbao',   talent: 4, realm: 6, kin: [], temper: '精明', desc: '灵石堆里修出来的合体修士，账本比道经翻得勤。' },
+    { id: 'n34', name: '石破岳',   title: '磐岩谷主',   sect: 'panyan',   talent: 4, realm: 5, kin: [], temper: '豪迈', desc: '年轻时一拳崩过自家山门，重建时顺手把体术练成了。' },
+    { id: 'n35', name: '磐老祖',   title: '磐岩老祖',   sect: 'panyan',   talent: 5, realm: 7, kin: [], temper: '淡泊', desc: '一觉睡了百年；他醒来，多半是天地要变。' },
+    { id: 'n36', name: '白棋翁',   title: '执阵堂主',   sect: 'zhoutian', talent: 4, realm: 4, kin: [], temper: '淡泊', desc: '摆一座阵能下一宿棋，输棋就拆阵重摆，乐此不疲。' },
   ],
 
   /* ---------- §24 宗门长老派系（站队得专属资源，敌对派系派高危任务） ---------- */
@@ -5031,6 +5044,8 @@ const Stat = {
     const jadePct = (typeof DaoxinSys !== 'undefined' && DaoxinSys.attunePct) ? DaoxinSys.attunePct(p) : 0;
     // v19 个人线永久加成
     const pl = (typeof PersonalSys !== 'undefined' && PersonalSys.bonusOf) ? PersonalSys.bonusOf(p) : {};
+    // 3.6 师承传艺被动
+    const mb = (typeof MasterSys !== 'undefined' && MasterSys.bonusOf) ? MasterSys.bonusOf(p) : {};
     const A = p.attrs;
     const compEff = this.compOf(p);
     const finalScale = (1 + rootPct / 100) * (1 - lossPct / 100) * (1 + marks * 0.01)
@@ -5040,24 +5055,24 @@ const Stat = {
       * ((typeof RankSys !== 'undefined' && RankSys.isTop && RankSys.isTop(p)) ? 1.02 : 1);   // v13 天下第一：全属性 +2%
 
     const maxHp = Math.round((90 + A.body * 15 + Math.pow(rp, 1.6) * 6 + (eq.hp || 0))
-      * (1 + ((gf.hpPct || 0) + (eq.hpPct || 0) + (dao.hpPct || 0) + (beastPass.hpPct || 0) + (dx.hpPct || 0) + (pl.hpPct || 0)) / 100) * finalScale);
+      * (1 + ((gf.hpPct || 0) + (eq.hpPct || 0) + (dao.hpPct || 0) + (beastPass.hpPct || 0) + (dx.hpPct || 0) + (pl.hpPct || 0) + (mb.hpPct || 0)) / 100) * finalScale);
     const maxMp = Math.round((40 + compEff * 8 + rp * 4 + (eq.mp || 0))
       * (1 + ((gf.mpPct || 0) + (dao.mpPct || 0)) / 100) * finalScale);
     const atk = Math.round((8 + A.gen * 2 + rp * 3 + (eq.atk || 0))
-      * (1 + ((gf.atkPct || 0) + (eq.atkPct || 0) + (sb.atkPct || 0) + (dao.atkPct || 0) + (beastPass.atkPct || 0) + (dx.atkPct || 0) + (pl.atkPct || 0)) / 100) * finalScale);
+      * (1 + ((gf.atkPct || 0) + (eq.atkPct || 0) + (sb.atkPct || 0) + (dao.atkPct || 0) + (beastPass.atkPct || 0) + (dx.atkPct || 0) + (pl.atkPct || 0) + (mb.atkPct || 0)) / 100) * finalScale);
     const def = Math.round((4 + A.body * 1.2 + rp * 1.8 + (eq.def || 0))
-      * (1 + ((gf.defPct || 0) + (eq.defPct || 0) + (dao.defPct || 0) + (dx.defPct || 0) + (pl.defPct || 0)) / 100) * finalScale);
+      * (1 + ((gf.defPct || 0) + (eq.defPct || 0) + (dao.defPct || 0) + (dx.defPct || 0) + (pl.defPct || 0) + (mb.defPct || 0)) / 100) * finalScale);
     const speed = Math.round((8 + (A.gen + A.body) / 2 + rp * 0.8 + (eq.spd || 0))
       * (1 + (gf.spdPct || 0) / 100) * finalScale);
     return {
       maxHp, maxMp, atk, def, speed,
       crit: Utils.clamp(5 + (A.luck + (eq.luck || 0)) * 0.6 + (gf.crit || 0) + (eq.crit || 0) + (beastPass.crit || 0) + (dx.crit || 0) + (pl.crit || 0), 0, 75),
-      dodge: Utils.clamp((gf.dodge || 0) + (eq.dodge || 0) + (sb.dodge || 0) + (beastPass.dodge || 0) + (dx.dodge || 0) + (pl.dodge || 0) + (p.dao === 'array' && DaoSys.tierLevel(p) >= 4 ? 8 : 0), 0, 35),   // v10 阵道六境·迷踪境 · v13 宗门/灵兽
+      dodge: Utils.clamp((gf.dodge || 0) + (eq.dodge || 0) + (sb.dodge || 0) + (beastPass.dodge || 0) + (dx.dodge || 0) + (pl.dodge || 0) + (mb.dodge || 0) + (p.dao === 'array' && DaoSys.tierLevel(p) >= 4 ? 8 : 0), 0, 35),   // v10 阵道六境·迷踪境 · v13 宗门/灵兽 · 3.6 师承
       block: Utils.clamp(8 + (gf.block || 0) + (p.dao === 'body' && DaoSys.tierLevel(p) >= 3 ? 10 : 0), 0, 60),   // v10 般若六境·铁骨境
-      cultPct: (gf.cult || 0) + (eq.cult || 0) + (sb.cult || 0) + caveCult + (beastPass.cult || 0) + (dx.cultPct || 0),
-      stonePct: (sb.stonePct || 0) + (eq.stonePct || 0) + (((p.cave && p.cave.builds && p.cave.builds.treasury) || 0) * 3),   // v20 藏宝阁
+      cultPct: (gf.cult || 0) + (eq.cult || 0) + (sb.cult || 0) + caveCult + (beastPass.cult || 0) + (dx.cultPct || 0) + (mb.cult || 0),
+      stonePct: (sb.stonePct || 0) + (eq.stonePct || 0) + (mb.stonePct || 0) + (((p.cave && p.cave.builds && p.cave.builds.treasury) || 0) * 3),   // v20 藏宝阁 · 3.6 师承
       luck: A.luck + (eq.luck || 0),
-      pillPct: (sb.pillPct || 0) + (pl.pillPct || 0),
+      pillPct: (sb.pillPct || 0) + (pl.pillPct || 0) + (mb.pillPct || 0),
       poisonReduce: sb.poisonReduce || 0,
       shopDiscount: sb.shopDiscount || 0,
       lifespan: GameData.LIFESPAN[p.realmIdx],
@@ -10358,6 +10373,316 @@ const PersonalSys = {
   },
 };
 window.PersonalSys = PersonalSys;
+/* ======================================================================
+ * §27 师承系统 MasterSys（3.6a 散人拜师最小闭环）
+ * 设计：设计-3.6-师承与门派恩仇.md
+ *   - 拜师不锁死门派：八位散人高人可拜（叶孤鸿/燕回时/陆吾/谢惊鸿/姜暮寒/红绡/云无月/老酒鬼）
+ *   - 拜师三关：递帖（好感门槛）→ 考验（切磋或奉物）→ 奉礼
+ *   - 教导五事：传功（拜师礼赠功法）/ 指路（师命任务）/ 护道（战败救援）/ 赐宝（请安偶得）/ 传艺（被动加成）
+ *   - 敬师值 bond 0~100：请安/论道/师命涨，护道耗；60 可求传功，40/70 两档被动
+ * ====================================================================== */
+const MasterSys = {
+  /* ---------- 师父名册（npcId → 师承定义） ---------- */
+  DEFS: {
+    n4:  { line: '刀道', temperKey: '冷厉', bondNeed: 55,
+      trial: { kind: 'spar', name: '接他三刀', desc: '叶孤鸿斜眼打量你半晌，下巴朝切磋台一抬："接我三刀。刀下站着的，才配问路。"' },
+      teach: { gongfa: 'gf_hansha', needRealm: 1, name: '寒沙掌' },
+      passive: { atkPct: 6 }, giftPool: ['pill_shengui'],
+      quips: ['「……」', '「还活着。」', '「刀，磨了没有。」', '「别死在别人手里。」'] },
+    n24: { line: '侠剑', temperKey: '侠气', bondNeed: 40,
+      trial: { kind: 'spar', name: '侠者三问', desc: '燕回时按剑而笑："剑上有三分侠气吗？先与我走三招，再谈拜师。"' },
+      teach: { gongfa: 'gf_fenglei', needRealm: 1, name: '风雷剑诀' },
+      passive: { atkPct: 5 }, giftPool: ['tal_jinguang'],
+      quips: ['「路见不平，还是躲远点？」', '「剑要直，人要正。」', '「今日行侠了么？」'] },
+    n6:  { line: '炼体', temperKey: '豪爽', bondNeed: 40,
+      trial: { kind: 'spar', name: '站桩挨拳', desc: '陆吾咧嘴一笑："俺这师父没啥教的，就一条——站得住！来，挨俺三拳试试！"' },
+      teach: { gongfa: 'gf_bumie', needRealm: 1, name: '不灭金身' },
+      passive: { hpPct: 6, defPct: 3 }, giftPool: ['pill_shengui', 'pill_liaoshang'],
+      quips: ['「吃饱没？吃饱才有力气练！」', '「骨头还硬朗嘛！」', '「练体如盖房，地基要实！」'] },
+    n12: { line: '盗术·身法', temperKey: '狡黠', bondNeed: 50,
+      trial: { kind: 'fetch', items: [['m_yaopi', 2]], name: '顺手牵皮', desc: '谢惊鸿眼珠一转："想学我的本事？行啊——去弄两张妖皮来。怎么弄的，我不问。"' },
+      teach: { gongfa: 'gf_zhouyu', needRealm: 2, name: '周天御风步' },
+      passive: { dodge: 3, stonePct: 5 }, giftPool: ['pill_huiyuan'],
+      quips: ['「嘘——今天谁也没见过我。」', '「身法这东西，练的是心虚。」', '「昨夜月色不错。」'] },
+    n9:  { line: '符道', temperKey: '古怪', bondNeed: 50,
+      trial: { kind: 'fetch', items: [['tal_huoshe', 2]], name: '画符过关', desc: '姜暮寒头也不抬："手稳不稳，画两道火蛇符来看看。歪一分，滚。"' },
+      teach: { gongfa: 'gf_zixiao', needRealm: 2, name: '紫霄仙雷' },
+      passive: { pillPct: 8 }, giftPool: ['tal_zilei'],
+      quips: ['「朱砂又贵了……」', '「笔锋抖什么。」', '「雷符之祖，画的是天意。」'] },
+    n22: { line: '离火', temperKey: '危险', bondNeed: 60,
+      trial: { kind: 'fetch', items: [['m_lingzhi', 3]], name: '灵草炼命', desc: '红绡指尖绕着一缕发丝："血罗刹也怕死——三株灵芝，炼命续魂的方子缺药。弄来，我传你三分火候。"' },
+      teach: { gongfa: 'gf_lihuo', needRealm: 2, name: '离火焚天诀' },
+      passive: { atkPct: 5 }, giftPool: ['pill_liaoshang', 'pill_bixue'],
+      quips: ['「这世道，恩怨分明才活得长。」', '「火候到了，人心也就熟了。」'] },
+    n13: { line: '魔功', temperKey: '危险', bondNeed: 60,
+      trial: { kind: 'fetch', items: [['m_zhenxiu', 2]], name: '魔宫夜宴', desc: '云无月笑意不达眼底："魔宫夜宴缺一道主菜，珍馐两味。去办。——别问席上坐的是谁。"' },
+      teach: { gongfa: 'gf_tumo', needRealm: 3, name: '屠魔剑典' },
+      passive: { atkPct: 8 }, giftPool: ['pill_bixue'],
+      quips: ['「胆子不小。」', '「正道的人，都这么无趣么？」', '「月色很好，适合办事。」'] },
+    n23: { line: '醉道', temperKey: '癫狂', bondNeed: 45,
+      trial: { kind: 'spar', name: '醉里乾坤', desc: '老酒鬼打了个酒嗝："想学？先陪我过三招——嗝——赢了这壶酒就归你！"' },
+      teach: { gongfa: 'gf_taiji', needRealm: 3, name: '太极衍图' },
+      passive: { cult: 8 }, giftPool: ['pill_huiyuan'],
+      quips: ['「酒！酒呢！」', '「天地一壶，众生皆醉……嗝。」', '「你身上有股仄气，像三年前的我。」'] },
+  },
+
+  /* ---------- 查询 ---------- */
+  def(id) { return this.DEFS[id] || null; },
+  master(p) { return (p.master && p.master.stage) ? p.master : null; },
+  state(p, id) { return (p.npcs && p.npcs[id]) || null; },
+  isCandidate(p, id) {
+    const d = this.def(id), s = this.state(p, id);
+    if (!d || !s || !s.alive) return false;
+    const cur = p.master;
+    if (cur && cur.stage && cur.stage !== 'dead') return false;   // 已有师父（含考验中）；先师既去可另投
+    if (p.partner === id || (p.sworn || []).includes(id)) return false;  // 道侣/结拜不收徒（各论各的）
+    return s.realmIdx > p.realmIdx;                  // 师父须高你一境
+  },
+  today(p) { return Math.floor(p.day || 0); },
+
+  /* ---------- 拜师三关 ---------- */
+  async baishi(id) {
+    const p = Game.player;
+    const d = this.def(id);
+    if (!this.isCandidate(p, id)) return;
+    const D = this.def(id), s = this.state(p, id);
+    const need = D.bondNeed;
+    if (s.rel < need) {
+      UI.toast(`交情不足：${d.name} 的性子，交情须过 ${need}（当前 ${s.rel}）。江湖同行、赠礼论道，慢慢来。`);
+      return;
+    }
+    const ok = await UI.popup({
+      title: `执弟子礼 · ${d.name}`,
+      html: `<b>${d.name}</b>（${d.title} · ${GameData.REALM_NAMES[s.realmIdx]}期 · ${D.line}一脉）<br><br>${D.trial.desc}<br><br><span style="color:var(--text-faint)">考验方式：${D.trial.kind === 'spar' ? '与师父切磋获胜一场' : '备齐考验所需之物，回来递帖'}</span>`,
+      options: [{ text: '递上拜师帖', value: true, primary: true }, { text: '再想想', value: false }],
+    });
+    if (!ok) return;
+    p.master = {
+      npcId: id, stage: 'trial', bond: 0, joinedDay: this.today(p),
+      trial: { kind: D.trial.kind, name: D.trial.name, items: D.trial.kind === 'fetch' ? D.trial.items.map(x => [x[0], x[1]]) : null, wins0: s.sparWins || 0 },
+      task: null, qinganDay: -1, lundaoDay: -1, protectDay: -1, taught: [], gifts: [],
+    };
+    Log.add(`你向 ${d.name} 递上拜师帖。考验·【${D.trial.name}】开始了。`, 'event');
+    Story.chron(`递帖拜师：${d.name} 门下，考验【${D.trial.name}】`);
+    if (D.trial.kind === 'spar') NpcSys.spar(id);   // 直接开切磋
+    else UI.toast('备齐考验之物后，来师承页递帖。');
+    Game.afterAction();
+  },
+  /** 考验是否已成 */
+  trialReady(p) {
+    const m = this.master(p);
+    if (!m || m.stage !== 'trial') return false;
+    const D = this.def(m.npcId), s = this.state(p, m.npcId);
+    if (!D || !s) return false;
+    if (D.trial.kind === 'spar') return (s.sparWins || 0) > m.trial.wins0;
+    if (D.trial.kind === 'fetch') return D.trial.items.every(([iid, n]) => Bag.count(iid) >= n);
+    return false;
+  },
+  /** 第三关·奉礼，转正 */
+  async offerGift() {
+    const p = Game.player;
+    const m = this.master(p);
+    if (!m || m.stage !== 'trial' || !this.trialReady(p)) return;
+    const D = this.def(m.npcId), d = NpcSys.def(m.npcId);
+    const cost = D.line === '盗术·身法' ? 0 : Math.round(200 * GameData.stoneEco(this.state(p, m.npcId).realmIdx));
+    let html = `${D.trial.name}——成了！<br>${d.name} 眼里的审视淡了几分。`;
+    if (cost > 0) html += `<br><br>拜师礼：灵石 <b>${Utils.fmtNum(cost)}</b>`;
+    else html += `<br><br>${d.name} 摆摆手："钱免了，心诚就够。"`;
+    const st0 = Game.player.stones, total = st0.low + st0.mid * 100 + st0.high * 10000;   // 门槛看总资产（spendStones 会自动兑换）
+    if (total < cost) { UI.toast('拜师礼的灵石还凑不齐'); return; }
+    if (cost > 0) {
+      const go = await UI.popup({ title: '第三关 · 奉礼', html, options: [{ text: '焚香奉礼', value: true, primary: true }, { text: '缓一缓', value: false }] });
+      if (!go) return;
+      Bag.spendStones(cost);
+    } else {
+      UI.popup({ title: '第三关 · 奉礼', html, options: [{ text: '叩首', value: true, primary: true }] });
+    }
+    if (D.trial.kind === 'fetch') {
+      for (const [iid, n] of D.trial.items) Bag.removeItem(iid, n);
+    }
+    m.stage = 'active';
+    m.bond = 35;
+    Log.add(`三拜九叩，礼成！<b>${d.name}</b> 正式收你入门墙——师承 ${D.line}一脉。（敬师值 +35）`, 'system');
+    Story.chron(`拜入 ${d.name} 门下（${D.line}一脉）`);
+    Game.afterAction();
+  },
+
+  /* ---------- 教导五事 ---------- */
+  async qingan() {
+    const p = Game.player;
+    const m = this.master(p);
+    if (!m || m.stage !== 'active') return;
+    const d = NpcSys.def(m.npcId), s = this.state(p, m.npcId);
+    if (!s || !s.alive) return;
+    if (m.qinganDay === this.today(p)) { UI.toast('今日已请过安了'); return; }
+    m.qinganDay = this.today(p);
+    const D = this.def(m.npcId);
+    const gain = Utils.rand(2, 4);
+    m.bond = Utils.clamp(m.bond + gain, 0, 100);
+    Time.add(1);
+    let extra = '';
+    if (m.bond >= 50 && Utils.chance(15)) {
+      const g = Utils.pick(D.giftPool);
+      Bag.addItem(g, 1);
+      m.gifts.push(g);
+      extra = `<br>${d.name} 从袖中取出一件物事：「拿着。——你如今是我门中人，别坠了名头。」<br>获赠【${GameData.ITEMS[g].name}】`;
+      Log.add(`师赐！【${GameData.ITEMS[g].name}】`, 'gain');
+    }
+    const quip = Utils.pick(D.quips);
+    Log.add(`你至 ${d.name} 处请安问礼。${quip ? `<span style="color:var(--text-faint)">${d.name}：${quip}</span>` : ''}（敬师 +${gain}）${extra}`, 'info');
+    Game.afterAction();
+  },
+  async lundao() {
+    const p = Game.player;
+    const m = this.master(p);
+    if (!m || m.stage !== 'active') return;
+    const d = NpcSys.def(m.npcId), s = this.state(p, m.npcId);
+    if (!s || !s.alive) return;
+    if (m.lundaoDay === this.today(p)) { UI.toast('今日已论过道了'); return; }
+    if (m.bond < 30) { UI.toast('师徒之谊尚浅，师父只肯点到即止'); return; }
+    m.lundaoDay = this.today(p);
+    const D = this.def(m.npcId);
+    const gain = Math.round((60 + s.realmIdx * 40) * GameData.eco(p.realmIdx) * (0.8 + s.realmIdx * 0.1));
+    Cultivate.addExp(p, gain);
+    p.insight = Math.min(100, (p.insight || 0) + 2);
+    m.bond = Utils.clamp(m.bond + 1, 0, 100);
+    Time.add(2);
+    Log.add(`你与师父 ${d.name} 席地论道，一言一语皆有进益。（修为 +${Utils.fmtNum(gain)}，感悟 +2，敬师 +1）`, 'gain');
+    Game.afterAction();
+  },
+  /** 师命：接 */
+  async taskAccept() {
+    const p = Game.player;
+    const m = this.master(p);
+    if (!m || m.stage !== 'active') return;
+    if (m.task) { UI.toast('师命在身，先去办完'); return; }
+    const s = this.state(p, m.npcId);
+    const D = this.def(m.npcId);
+    const mrp = Utils.clamp(s.realmIdx * 4 + s.layer, 0, 60);
+    let t = null;
+    if (Utils.chance(55)) {
+      const pool = SectSys.taskMonsters(mrp).filter(id => GameData.MONSTERS[id] && GameData.MONSTERS[id].power <= mrp + 4);
+      const target = pool.length ? Utils.pick(pool) : null;
+      if (target) { const need = Utils.rand(3, 5); t = { type: 'kill', target, need, progress: 0, name: `师命 · 斩除${GameData.MONSTERS[target].name}`, desc: `师父吩咐：击杀 ${GameData.MONSTERS[target].name} ×${need}` }; }
+    }
+    if (!t) {
+      const tier = Math.min(4, Math.floor(s.realmIdx / 2) + 1);
+      const pool = GameData.matsByTier(tier);
+      const target = pool.length ? Utils.pick(pool) : 'm_lingcao';
+      const need2 = Utils.rand(3, 6);
+      t = { type: 'collect', target, need: need2, progress: 0, name: `师命 · 备办${GameData.ITEMS[target].name}`, desc: `师父吩咐：取 ${GameData.ITEMS[target].name} ×${need2}` };
+    }
+    m.task = t;
+    Log.add(`师父有命：【${t.name}】——${t.desc}。`, 'event');
+    Story.chron(`领师命【${t.name}】`);
+    Game.afterAction();
+  },
+  onKill(monsterId) {
+    const p = Game.player;
+    const m = this.master(p);
+    if (!m || !m.task || m.task.type !== 'kill' || m.task.progress >= m.task.need) return;
+    if (m.task.target !== monsterId) return;
+    m.task.progress++;
+    if (m.task.progress >= m.task.need) Log.add('师命已办成，可去师父处复命！', 'gain');
+    else Log.add(`师命进度：${m.task.progress}/${m.task.need}。`, 'info');
+  },
+  async taskSubmit() {
+    const p = Game.player;
+    const m = this.master(p);
+    if (!m || !m.task) return;
+    const t = m.task;
+    if (t.type === 'kill') {
+      if (t.progress < t.need) { UI.toast('师命未成，再去做完'); return; }
+    } else {
+      const have = Bag.count(t.target);
+      if (have < t.need) { UI.toast(`还差 ${GameData.ITEMS[t.target].name} ×${t.need - have}`); return; }
+      Bag.removeItem(t.target, t.need);
+    }
+    const s = this.state(p, m.npcId);
+    const stones = Math.round(80 * GameData.stoneEco(Math.max(1, s.realmIdx)));
+    Bag.addStones(stones);
+    m.bond = Utils.clamp(m.bond + 5, 0, 100);
+    m.task = null;
+    Log.add(`复命！师父颔首：“办事牢靠。”（灵石 +${Utils.fmtNum(stones)}，敬师 +5）`, 'gain');
+    Game.afterAction();
+  },
+  /** 传功：拜师礼赠功法（敬师 60 + 境界到门槛） */
+  async teach() {
+    const p = Game.player;
+    const m = this.master(p);
+    if (!m || m.stage !== 'active') return;
+    const D = this.def(m.npcId), d = NpcSys.def(m.npcId);
+    if (m.taught.includes(D.teach.gongfa)) { UI.toast('本门压箱底的，都已在你了'); return; }
+    if (m.bond < 60) { UI.toast(`敬师值未到 60（当前 ${m.bond}）——师父还没把你当自己人`); return; }
+    if (p.realmIdx < D.teach.needRealm) { UI.toast(`境界未到：需 ${GameData.REALM_NAMES[D.teach.needRealm]}期方堪传授`); return; }
+    const ok = await UI.popup({
+      title: `传功 · ${D.teach.name}`,
+      html: `${d.name} 沉吟片刻：“${D.teach.name}，是本脉压箱底的根基。今日传你——记牢了，莫要外传。”`,
+      options: [{ text: '跪领功法', value: true, primary: true }, { text: '尚未准备好', value: false }],
+    });
+    if (!ok) return;
+    Bag.addItem(D.teach.gongfa, 1);
+    m.taught.push(D.teach.gongfa);
+    m.bond = Utils.clamp(m.bond + 3, 0, 100);
+    Time.add(1);
+    Log.add(`师父倾囊相授，【<b>${D.teach.name}</b>】已入你行囊，可研习修持！`, 'system');
+    Story.chron(`师父传功【${D.teach.name}】`);
+    Game.afterAction();
+  },
+  /** 护道：战败濒死时师父出手（每日一次，耗敬师 20） */
+  tryProtect(p) {
+    const m = this.master(p);
+    if (!m || m.stage !== 'active' || m.bond < 30) return null;
+    if (m.protectDay === this.today(p)) return null;
+    const s = this.state(p, m.npcId);
+    if (!s || !s.alive) return null;
+    m.protectDay = this.today(p);
+    m.bond = Utils.clamp(m.bond - 20, 0, 100);
+    const d = NpcSys.def(m.npcId);
+    return { name: d.name };
+  },
+  /** 师父身陨 → 衣钵（3.6a 简仪：遗产入袋 + 恩仇继承；全事件 3.6c） */
+  checkInheritance(p) {
+    const m = this.master(p);
+    if (!m || m.stage !== 'active') return;
+    const s = this.state(p, m.npcId);
+    if (!s || s.alive) return;
+    const D = this.def(m.npcId), d = NpcSys.def(m.npcId);
+    m.stage = 'dead';
+    m.bond = 100;
+    for (const g of D.giftPool) { Bag.addItem(g, 1); m.gifts.push(g); }
+    if (s.grudge) p.master.grudgeInherited = true;
+    Log.add(`<b>讣音传来——</b>${d.name} 道陨了。你在灵前长跪三日，接过衣钵：${D.giftPool.map(g => `【${GameData.ITEMS[g].name}】`).join('、')}。<br><span style="color:var(--text-faint)">师门有恩必偿，有仇必报。师父的账，如今是你的账。</span>`, 'warn');
+    Story.chron(`师父 ${d.name} 道陨，承其衣钵`);
+  },
+
+  /* ---------- 加成与提示 ---------- */
+  /** 传艺被动：敬师 40 半效 / 70 满效 */
+  bonusOf(p) {
+    const m = this.master(p);
+    if (!m || m.stage !== 'active') return {};
+    const D = this.def(m.npcId);
+    if (!D || m.bond < 40) return {};
+    const k = m.bond >= 70 ? 1 : 0.5;
+    const out = {};
+    for (const [key, v] of Object.entries(D.passive)) out[key] = Math.round(v * k * 10) / 10;
+    return out;
+  },
+  bondLabel(b) {
+    if (b >= 90) return '亲传骨肉';
+    if (b >= 70) return '倾囊相授';
+    if (b >= 40) return '渐入师门';
+    if (b >= 15) return '初收门墙';
+    return '名分未深';
+  },
+  dot(p) {
+    const m = this.master(p);
+    if (!m) return false;
+    if (m.stage === 'trial') return this.trialReady(p);
+    if (m.stage === 'active' && m.task) return m.task.type === 'kill' ? m.task.progress >= m.task.need : Bag.count(m.task.target) >= m.task.need;
+    return false;
+  },
+};
 
 /* ======================================================================
  * §25 肉鸽式秘境 DungeonSys（随机节点路线 / 撤离 / 陨落惩罚 / 本命法宝）
@@ -12297,6 +12622,7 @@ const Battle = {
     const vLine = Narrative.victory();   // v5：胜后收势句
     if (vLine) this.log(vLine, 'log-gain');
     if (B.enemy.id) SectSys.onKill(B.enemy.id);
+    if (typeof MasterSys !== 'undefined') MasterSys.onKill(B.enemy.id);   // 3.6 师命讨伐进度
     BountySys.onKill(B.enemy.id);   // v13 悬赏猎杀进度
     // §24 恩怨 / 了断 / 立场结算
     if (B.ctx.npcId && B.ctx.mode === 'hunt') NpcSys.onPlayerKillsNpc(p, B.ctx.npcId);
@@ -12374,7 +12700,10 @@ const Battle = {
     const st = Stat.compute(p);
     // §24 危机相助：好友/结拜/道侣概率出手
     const aid = NpcSys.tryAid(p, 'battle');
-    const mul = aid ? 0.4 : 1;
+    // 3.6 师承护道：师父必至（每日一次，耗敬师 20）
+    const mAid = (typeof MasterSys !== 'undefined' && MasterSys.tryProtect) ? MasterSys.tryProtect(p) : null;
+    if (mAid) Log.add(`千钧一发——<b>${mAid.name}</b> 自天外飞至，一袖将你卷出必死之局！（护道 · 敬师 -20）`, 'gain');
+    const mul = (aid || mAid) ? 0.4 : 1;
     if (aid) Log.add(`危急关头，<b>${aid.name}</b> 仗剑而至，拼死将你救出！折损因此大减。`, 'gain');
     const lostExp = Math.round(p.exp * 0.1 * mul);
     p.exp = Math.max(0, p.exp - lostExp);
@@ -13848,6 +14177,7 @@ const UI = {
       { id: 'cave', name: '洞府' },
       { id: 'map', name: '游历' },
       { id: 'jianghu', name: '江湖' },
+      { id: 'master', name: '师承' },
       { id: 'shop', name: '坊市' },
       { id: 'sect', name: '宗门' },
       { id: 'gongfa', name: '功法' },
@@ -13860,9 +14190,11 @@ const UI = {
       || !!p.canReincarnate;
     const showMapDot = !!(p.world && p.world.pending);
     const showJianghuDot = NpcSys.grudgeCount(p) > 0 || (typeof PersonalSys !== 'undefined' && PersonalSys.anyAvailable(p));   // v19 个人线待续谈
+    const showMasterDot = (typeof MasterSys !== 'undefined') ? MasterSys.dot(p) : false;   // 3.6 师承待办
     const htmls = tabs.map(t => {
       const dot = (t.id === 'sect' && showSectDot) || (t.id === 'cultivate' && showCultDot)
-        || (t.id === 'map' && showMapDot) || (t.id === 'jianghu' && showJianghuDot);
+        || (t.id === 'map' && showMapDot) || (t.id === 'jianghu' && showJianghuDot)
+        || (t.id === 'master' && showMasterDot);
       const lock = Guide.tabLocked(t.id);   // v6：分步解锁
       return `<button class="tab-btn ${Game.activeTab === t.id ? 'active' : ''} ${lock ? 'locked' : ''}" data-action="act-tab" data-tab="${t.id}" ${lock ? `title="${lock}"` : ''}>${lock ? '🔒' : ''}${t.name}${dot ? '<span class="dot"></span>' : ''}</button>`;
     });
@@ -13885,6 +14217,7 @@ const UI = {
       jianghu: () => this.renderNpcTab(),
       shop: () => this.renderShopTab(),
       sect: () => this.renderSectTab(),
+      master: () => this.renderMasterTab(),   // 3.6 师承
       gongfa: () => this.renderGongfaTab(),
     }[Game.activeTab];
     // v21：宽屏双列栅格——独立卡片构成的页签并排铺满，消灭大片留白
@@ -14317,6 +14650,7 @@ const UI = {
         `<button class="btn btn-sm" data-action="npc-befriend" data-npc="${d.id}">结交（${Utils.fmtNum(NpcSys.befriendCost(p, d.id))}灵石）</button>`,
         `<button class="btn btn-sm" data-action="npc-spar" data-npc="${d.id}">切磋</button>`,
         s.met ? `<button class="btn btn-sm" data-action="npc-gift" data-npc="${d.id}">赠礼（${Utils.fmtNum(Math.round(30 * GameData.stoneEco(s.realmIdx)))}灵石）</button>` : '',
+        MasterSys.isCandidate(p, d.id) && s.met ? `<button class="btn btn-sm btn-primary" data-action="npc-baishi" data-npc="${d.id}">执弟子礼</button>` : '',
         s.met && s.rel >= 30 ? `<button class="btn btn-sm" data-action="npc-discuss" data-npc="${d.id}">论道</button>` : '',
         PersonalSys.next(p, d.id) ? `<button class="btn btn-sm btn-primary" data-action="npc-line" data-npc="${d.id}" title="${Utils.esc((GameData.PERSONAL[d.id].acts[(p.personal[d.id] || 0)] || {}).brief || '')}">续谈 · ${Utils.esc(GameData.PERSONAL[d.id].arc)}</button>` : '',
         s.rel >= 15 && p.partner !== d.id ? `<button class="btn btn-sm btn-danger" data-action="npc-betray" data-npc="${d.id}">背刺夺宝</button>` : '',
@@ -14623,6 +14957,85 @@ const UI = {
         ${auctionSection}
         ${donateSection}
       </div>`;
+  },
+
+  /* ---------- 3.6 师承页签 ---------- */
+  renderMasterTab() {
+    const p = Game.player;
+    MasterSys.checkInheritance(p);   // 师父身陨 → 衣钵（惰性触发）
+    const m = MasterSys.master(p);
+    if (!m) {
+      const rows = Object.keys(MasterSys.DEFS).map(id => {
+        const D = MasterSys.DEFS[id];
+        const d = NpcSys.def(id), s = NpcSys.state(p, id);
+        if (!d || !s) return '';
+        const gap = s.realmIdx > p.realmIdx;
+        const canAsk = MasterSys.isCandidate(p, id) && s.met;
+        const relOk = s.rel >= D.bondNeed;
+        const trialTxt = D.trial.kind === 'spar' ? '切磋获胜一场' : D.trial.items.map(([i2, n2]) => `${GameData.ITEMS[i2].name}×${n2}`).join('、');
+        const status = !gap ? '<span class="tag">境界未至</span>'
+          : !s.met ? '<span class="tag">素未谋面 · 江湖游历可遇</span>'
+          : relOk ? '<span class="tag safe">可递帖</span>'
+          : `<span class="tag">交情 ${s.rel}/${D.bondNeed}</span>`;
+        return `<div class="card">
+          <div class="card-title">${Art.portrait(Art.npcLook(d))}${d.name} <span style="color:var(--text-faint);font-size:12px">${d.title} · ${D.line}一脉 · ${GameData.REALM_NAMES[s.realmIdx]}期</span> ${status}</div>
+          <div class="card-desc">${d.desc}<br>考验【${D.trial.name}】：${trialTxt}。传功可授【<b>${D.teach.name}</b>】。</div>
+          ${canAsk ? `<div class="action-row"><button class="btn btn-sm btn-primary" data-action="npc-baishi" data-npc="${id}">执弟子礼</button></div>` : ''}
+        </div>`;
+      }).join('');
+      return `<div class="card"><div class="card-title">✦ 师承</div>
+        <div class="card-desc">入门墙不在名头，在人选。散人高人散落江湖，游历可遇。<br>递帖三关：<b>交情到位 → 过一场考验 → 奉礼叩首</b>。师者，所以传道授业解惑也。</div></div>${rows}`;
+    }
+    const d = NpcSys.def(m.npcId), s = NpcSys.state(p, m.npcId), D = MasterSys.DEFS[m.npcId];
+    if (m.stage === 'dead') {
+      return `<div class="card"><div class="card-title">🕯 先师之位 · ${d.name}</div>
+        <div class="card-desc">${d.desc}<br><span class="neg">斯人已逝，衣钵犹在。师父的账，如今是你的账。</span></div>
+        <div class="card-desc">受教：${m.taught.map(g => GameData.ITEMS[g].name).join('、') || '——'}　师赐：${m.gifts.length} 件</div></div>
+        <div class="card"><div class="card-title">✦ 另投名师</div><div class="card-desc">先师既去，你可另拜他人。江湖路远，所学不辍。</div></div>`;
+    }
+    if (m.stage === 'trial') {
+      const ready = MasterSys.trialReady(p);
+      let prog = '';
+      if (D.trial.kind === 'spar') {
+        const won = (s.sparWins || 0) > m.trial.wins0;
+        prog = won ? '切磋已胜——师父没说话，但眼里有三分认可。' : '考验方式：与师父切磋，胜一场（江湖页切磋）。';
+      } else {
+        prog = D.trial.items.map(([i2, n2]) => `${GameData.ITEMS[i2].name}（持有 ${Bag.count(i2)}/${n2}）`).join('、');
+      }
+      return `<div class="card"><div class="card-title">考验中 · 【${D.trial.name}】<span class="tag">${D.line}一脉</span></div>
+        <div class="card-desc">${D.trial.desc}</div>
+        <div class="card-desc">${prog}</div>
+        ${ready ? `<div class="action-row"><button class="btn btn-primary" data-action="m-offer">奉礼叩首 · 拜入门墙</button></div>` : ''}
+      </div>`;
+    }
+    // active
+    const today = MasterSys.today(p);
+    const qinganDone = m.qinganDay === today;
+    const lundaoDone = m.lundaoDay === today;
+    const task = m.task;
+    const taskDone = task && (task.type === 'kill' ? task.progress >= task.need : Bag.count(task.target) >= task.need);
+    const taughtAll = m.taught.includes(D.teach.gongfa);
+    const teachOk = !taughtAll && m.bond >= 60 && p.realmIdx >= D.teach.needRealm;
+    const quip = D.quips[m.bond % D.quips.length];
+    const taskHtml = task
+      ? `<div class="shop-row"><div class="gf-info"><div class="gf-name">${task.name}</div>
+          <div class="gf-desc">${task.desc} —— 进度 ${task.type === 'kill' ? `${task.progress}/${task.need}` : `持有 ${Bag.count(task.target)}/${task.need}`}</div></div>
+          ${taskDone ? `<button class="btn btn-sm btn-primary" data-action="m-task-submit">复命</button>` : ''}</div>`
+      : `<div class="action-row"><button class="btn btn-sm" data-action="m-task-accept">领师命</button></div>`;
+    return `
+    <div class="card">
+      <div class="card-title">${Art.portrait(Art.npcLook(d))}${d.name} <span style="color:var(--text-faint);font-size:12px">${d.title} · ${D.line}一脉 · 师父</span> <span class="tag safe">敬师 ${m.bond} · ${MasterSys.bondLabel(m.bond)}</span></div>
+      <div class="card-desc"><span style="color:var(--text-faint)">${d.name}：${quip}</span></div>
+      <div class="action-row">
+        <button class="btn btn-sm" data-action="m-qingan" ${qinganDone ? 'disabled' : ''}>请安</button>
+        <button class="btn btn-sm" data-action="m-lundao" ${lundaoDone ? 'disabled' : ''}>论道</button>
+        <button class="btn btn-sm ${teachOk ? 'btn-primary' : ''}" data-action="m-teach" title="敬师 60 且境界到 ${GameData.REALM_NAMES[D.teach.needRealm]}期可求传功">${taughtAll ? '已传功' : '求传功 · ' + D.teach.name}</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-title">✦ 师命</div>${taskHtml}</div>
+    <div class="card"><div class="card-title">✦ 师门旧事</div>
+      <div class="card-desc">入门 ${this.today - 0 + (this.today ? 0 : 0)}${''}于第 ${m.joinedDay + 1} 日 · 受教：${m.taught.map(g => GameData.ITEMS[g].name).join('、') || '——'}<br>师赐 ${m.gifts.length} 件：${m.gifts.map(g => GameData.ITEMS[g].name).join('、') || '——'}</div>
+    </div>`;
   },
 
   renderSectTab() {
@@ -15676,6 +16089,14 @@ const Game = {
     'npc-peace': (d) => NpcSys.peacemake(d.npc),
     'npc-showdown': (d) => NpcSys.showdown(d.npc),   // v20 雷台了断
     'npc-learnfrom': (d) => NpcSys.learnFrom(d.npc),   // v20 三胜指点
+    /* --- 3.6 师承 --- */
+    'npc-baishi': (d) => MasterSys.baishi(d.npc),
+    'm-offer': () => MasterSys.offerGift(),
+    'm-qingan': () => MasterSys.qingan(),
+    'm-lundao': () => MasterSys.lundao(),
+    'm-task-accept': () => MasterSys.taskAccept(),
+    'm-task-submit': () => MasterSys.taskSubmit(),
+    'm-teach': () => MasterSys.teach(),
     /* --- v20 道侣共修（行动收尾自动触发） --- */
     /* --- v3 派系 --- */
     'act-faction-join': (d) => SectSys.joinFaction(d.f),

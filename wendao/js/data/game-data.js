@@ -1038,6 +1038,19 @@ const GameData = {
     { id: 'n22', name: '红绡',   title: '血罗刹',     sect: null,      talent: 4, realm: 2, kin: [],      temper: '危险', desc: '行走黑暗中的女修，美艳危险，亦正亦邪，恩怨分明。' },
     { id: 'n23', name: '老酒鬼', title: '醉道人',     sect: null,      talent: 5, realm: 3, kin: [],      temper: '癫狂', desc: '抱着酒葫芦云游四方的疯道人，偶有惊世之言，深藏不露。' },
     { id: 'n24', name: '燕回时', title: '归雁剑侠',   sect: null,      talent: 4, realm: 1, kin: [],      temper: '侠气', desc: '路见不平必拔刀的游侠剑客，宁折不弯。' },
+    /* ---- 3.6 名宿补全：五宗掌门/堂主/老祖（设计-3.6-师承与门派恩仇） ---- */
+    { id: 'n25', name: '玄真子',   title: '青云掌门',   sect: 'qingyun',  talent: 5, realm: 6, kin: [], temper: '冷厉', desc: '执掌青云三百载，佩剑「斩尘」三十年未出鞘，出鞘必见血光。' },
+    { id: 'n26', name: '楚断岳',   title: '执剑堂主',   sect: 'qingyun',  talent: 4, realm: 4, kin: [], temper: '豪爽', desc: '青云执剑堂堂主，执法无私，门规比剑更利。' },
+    { id: 'n27', name: '柳守拙',   title: '守阁老人',   sect: 'qingyun',  talent: 4, realm: 5, kin: [], temper: '淡泊', desc: '藏经阁看门人，扫了一辈子剑痕，扫出来的都是剑意。' },
+    { id: 'n28', name: '青虚老祖', title: '太上长老',   sect: 'qingyun',  talent: 5, realm: 7, kin: [], temper: '孤傲', desc: '闭关百年，宗门存亡之秋方才现世，现世必惊天动地。' },
+    { id: 'n29', name: '温百草',   title: '丹霞谷主',   sect: 'danxia',   talent: 5, realm: 5, kin: [], temper: '温润', desc: '丹道国手，一炉能出九转还魂丹，谷中丹香因他而起。' },
+    { id: 'n30', name: '曲青蘅',   title: '药堂堂主',   sect: 'danxia',   talent: 3, realm: 3, kin: [], temper: '冷厉', desc: '百草园里寸草皆灵，认错一株药草要罚抄药典百遍。' },
+    { id: 'n31', name: '焦苦竹',   title: '守炉人',     sect: 'danxia',   talent: 4, realm: 4, kin: [], temper: '古怪', desc: '守镇谷丹炉六十年，点头的意思只有他自己懂。' },
+    { id: 'n32', name: '段铜山',   title: '护商统领',   sect: 'wanbao',   talent: 4, realm: 4, kin: [], temper: '豪爽', desc: '铁掌护商队，走遍三大险地，护过的商队没丢过一箱。' },
+    { id: 'n33', name: '段万金',   title: '商会老祖',   sect: 'wanbao',   talent: 4, realm: 6, kin: [], temper: '精明', desc: '灵石堆里修出来的合体修士，账本比道经翻得勤。' },
+    { id: 'n34', name: '石破岳',   title: '磐岩谷主',   sect: 'panyan',   talent: 4, realm: 5, kin: [], temper: '豪迈', desc: '年轻时一拳崩过自家山门，重建时顺手把体术练成了。' },
+    { id: 'n35', name: '磐老祖',   title: '磐岩老祖',   sect: 'panyan',   talent: 5, realm: 7, kin: [], temper: '淡泊', desc: '一觉睡了百年；他醒来，多半是天地要变。' },
+    { id: 'n36', name: '白棋翁',   title: '执阵堂主',   sect: 'zhoutian', talent: 4, realm: 4, kin: [], temper: '淡泊', desc: '摆一座阵能下一宿棋，输棋就拆阵重摆，乐此不疲。' },
   ],
 
   /* ---------- §24 宗门长老派系（站队得专属资源，敌对派系派高危任务） ---------- */

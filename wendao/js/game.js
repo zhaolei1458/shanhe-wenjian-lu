@@ -462,6 +462,14 @@ const Game = {
     'npc-peace': (d) => NpcSys.peacemake(d.npc),
     'npc-showdown': (d) => NpcSys.showdown(d.npc),   // v20 雷台了断
     'npc-learnfrom': (d) => NpcSys.learnFrom(d.npc),   // v20 三胜指点
+    /* --- 3.6 师承 --- */
+    'npc-baishi': (d) => MasterSys.baishi(d.npc),
+    'm-offer': () => MasterSys.offerGift(),
+    'm-qingan': () => MasterSys.qingan(),
+    'm-lundao': () => MasterSys.lundao(),
+    'm-task-accept': () => MasterSys.taskAccept(),
+    'm-task-submit': () => MasterSys.taskSubmit(),
+    'm-teach': () => MasterSys.teach(),
     /* --- v20 道侣共修（行动收尾自动触发） --- */
     /* --- v3 派系 --- */
     'act-faction-join': (d) => SectSys.joinFaction(d.f),

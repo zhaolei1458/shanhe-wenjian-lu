@@ -101,6 +101,8 @@ const Stat = {
     const jadePct = (typeof DaoxinSys !== 'undefined' && DaoxinSys.attunePct) ? DaoxinSys.attunePct(p) : 0;
     // v19 个人线永久加成
     const pl = (typeof PersonalSys !== 'undefined' && PersonalSys.bonusOf) ? PersonalSys.bonusOf(p) : {};
+    // 3.6 师承传艺被动
+    const mb = (typeof MasterSys !== 'undefined' && MasterSys.bonusOf) ? MasterSys.bonusOf(p) : {};
     const A = p.attrs;
     const compEff = this.compOf(p);
     const finalScale = (1 + rootPct / 100) * (1 - lossPct / 100) * (1 + marks * 0.01)
@@ -110,24 +112,24 @@ const Stat = {
       * ((typeof RankSys !== 'undefined' && RankSys.isTop && RankSys.isTop(p)) ? 1.02 : 1);   // v13 天下第一：全属性 +2%
 
     const maxHp = Math.round((90 + A.body * 15 + Math.pow(rp, 1.6) * 6 + (eq.hp || 0))
-      * (1 + ((gf.hpPct || 0) + (eq.hpPct || 0) + (dao.hpPct || 0) + (beastPass.hpPct || 0) + (dx.hpPct || 0) + (pl.hpPct || 0)) / 100) * finalScale);
+      * (1 + ((gf.hpPct || 0) + (eq.hpPct || 0) + (dao.hpPct || 0) + (beastPass.hpPct || 0) + (dx.hpPct || 0) + (pl.hpPct || 0) + (mb.hpPct || 0)) / 100) * finalScale);
     const maxMp = Math.round((40 + compEff * 8 + rp * 4 + (eq.mp || 0))
       * (1 + ((gf.mpPct || 0) + (dao.mpPct || 0)) / 100) * finalScale);
     const atk = Math.round((8 + A.gen * 2 + rp * 3 + (eq.atk || 0))
-      * (1 + ((gf.atkPct || 0) + (eq.atkPct || 0) + (sb.atkPct || 0) + (dao.atkPct || 0) + (beastPass.atkPct || 0) + (dx.atkPct || 0) + (pl.atkPct || 0)) / 100) * finalScale);
+      * (1 + ((gf.atkPct || 0) + (eq.atkPct || 0) + (sb.atkPct || 0) + (dao.atkPct || 0) + (beastPass.atkPct || 0) + (dx.atkPct || 0) + (pl.atkPct || 0) + (mb.atkPct || 0)) / 100) * finalScale);
     const def = Math.round((4 + A.body * 1.2 + rp * 1.8 + (eq.def || 0))
-      * (1 + ((gf.defPct || 0) + (eq.defPct || 0) + (dao.defPct || 0) + (dx.defPct || 0) + (pl.defPct || 0)) / 100) * finalScale);
+      * (1 + ((gf.defPct || 0) + (eq.defPct || 0) + (dao.defPct || 0) + (dx.defPct || 0) + (pl.defPct || 0) + (mb.defPct || 0)) / 100) * finalScale);
     const speed = Math.round((8 + (A.gen + A.body) / 2 + rp * 0.8 + (eq.spd || 0))
       * (1 + (gf.spdPct || 0) / 100) * finalScale);
     return {
       maxHp, maxMp, atk, def, speed,
       crit: Utils.clamp(5 + (A.luck + (eq.luck || 0)) * 0.6 + (gf.crit || 0) + (eq.crit || 0) + (beastPass.crit || 0) + (dx.crit || 0) + (pl.crit || 0), 0, 75),
-      dodge: Utils.clamp((gf.dodge || 0) + (eq.dodge || 0) + (sb.dodge || 0) + (beastPass.dodge || 0) + (dx.dodge || 0) + (pl.dodge || 0) + (p.dao === 'array' && DaoSys.tierLevel(p) >= 4 ? 8 : 0), 0, 35),   // v10 阵道六境·迷踪境 · v13 宗门/灵兽
+      dodge: Utils.clamp((gf.dodge || 0) + (eq.dodge || 0) + (sb.dodge || 0) + (beastPass.dodge || 0) + (dx.dodge || 0) + (pl.dodge || 0) + (mb.dodge || 0) + (p.dao === 'array' && DaoSys.tierLevel(p) >= 4 ? 8 : 0), 0, 35),   // v10 阵道六境·迷踪境 · v13 宗门/灵兽 · 3.6 师承
       block: Utils.clamp(8 + (gf.block || 0) + (p.dao === 'body' && DaoSys.tierLevel(p) >= 3 ? 10 : 0), 0, 60),   // v10 般若六境·铁骨境
-      cultPct: (gf.cult || 0) + (eq.cult || 0) + (sb.cult || 0) + caveCult + (beastPass.cult || 0) + (dx.cultPct || 0),
-      stonePct: (sb.stonePct || 0) + (eq.stonePct || 0) + (((p.cave && p.cave.builds && p.cave.builds.treasury) || 0) * 3),   // v20 藏宝阁
+      cultPct: (gf.cult || 0) + (eq.cult || 0) + (sb.cult || 0) + caveCult + (beastPass.cult || 0) + (dx.cultPct || 0) + (mb.cult || 0),
+      stonePct: (sb.stonePct || 0) + (eq.stonePct || 0) + (mb.stonePct || 0) + (((p.cave && p.cave.builds && p.cave.builds.treasury) || 0) * 3),   // v20 藏宝阁 · 3.6 师承
       luck: A.luck + (eq.luck || 0),
-      pillPct: (sb.pillPct || 0) + (pl.pillPct || 0),
+      pillPct: (sb.pillPct || 0) + (pl.pillPct || 0) + (mb.pillPct || 0),
       poisonReduce: sb.poisonReduce || 0,
       shopDiscount: sb.shopDiscount || 0,
       lifespan: GameData.LIFESPAN[p.realmIdx],

@@ -2603,7 +2603,12 @@ textarea.save-code:focus { border-color: var(--gold-dim); }
     padding: 5px !important;
   }
   #panel-left { order: 0 !important; max-height: 100% !important; overflow-y: auto; }
-  .center-panel { order: 0 !important; min-height: 0 !important; max-height: 100%; }
+  /* 3.6 修：矮横屏中列放行滚动——旧规 overflow:hidden 把打坐/闭关等核心按钮裁出屏外（scrollH 698 vs 可视 222），且无滚条不可达 */
+  .center-panel { order: 0 !important; min-height: 0 !important; max-height: 100%; overflow-y: auto !important; -webkit-overflow-scrolling: touch; }
+  #tab-content { max-height: none; overflow: visible; }
+  /* 主线横幅与页签吸顶：滚动时常驻可点（子元素自带墨底/纸底，不再覆写） */
+  #focus-strip { position: sticky; top: 0; z-index: 8; margin-bottom: 0; }
+  #tabs { position: sticky; top: 63px; z-index: 8; background: var(--bg); margin-top: 0; padding-top: 2px; }
   #panel-right {
     order: 0 !important;
     grid-column: 1 / -1 !important;

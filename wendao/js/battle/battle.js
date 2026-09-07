@@ -1478,6 +1478,7 @@ const Battle = {
     const vLine = Narrative.victory();   // v5：胜后收势句
     if (vLine) this.log(vLine, 'log-gain');
     if (B.enemy.id) SectSys.onKill(B.enemy.id);
+    if (typeof MasterSys !== 'undefined') MasterSys.onKill(B.enemy.id);   // 3.6 师命讨伐进度
     BountySys.onKill(B.enemy.id);   // v13 悬赏猎杀进度
     // §24 恩怨 / 了断 / 立场结算
     if (B.ctx.npcId && B.ctx.mode === 'hunt') NpcSys.onPlayerKillsNpc(p, B.ctx.npcId);
@@ -1555,7 +1556,10 @@ const Battle = {
     const st = Stat.compute(p);
     // §24 危机相助：好友/结拜/道侣概率出手
     const aid = NpcSys.tryAid(p, 'battle');
-    const mul = aid ? 0.4 : 1;
+    // 3.6 师承护道：师父必至（每日一次，耗敬师 20）
+    const mAid = (typeof MasterSys !== 'undefined' && MasterSys.tryProtect) ? MasterSys.tryProtect(p) : null;
+    if (mAid) Log.add(`千钧一发——<b>${mAid.name}</b> 自天外飞至，一袖将你卷出必死之局！（护道 · 敬师 -20）`, 'gain');
+    const mul = (aid || mAid) ? 0.4 : 1;
     if (aid) Log.add(`危急关头，<b>${aid.name}</b> 仗剑而至，拼死将你救出！折损因此大减。`, 'gain');
     const lostExp = Math.round(p.exp * 0.1 * mul);
     p.exp = Math.max(0, p.exp - lostExp);
