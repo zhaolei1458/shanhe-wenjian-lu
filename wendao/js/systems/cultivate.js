@@ -22,6 +22,10 @@ const Cultivate = {
   gainMult() {
     return (1 + Stat.compute(Game.player).cultPct / 100) * Utils.randF(0.9, 1.15);
   },
+  /** v22 3.7a 卡1：闭关收益递减——连佛也怕长坐不起。同一小层内连续闭关不出进境，药力逐轮衰减 */
+  diminMul(p) { const s = Math.min(5, p.seclStreak || 0); return [1, 0.8, 0.65, 0.5, 0.4, 0.35][s]; },
+  /** v22 3.7a 卡1：修为囤积软上限——圆满层修为+溢出至「当层需求 ×1.3」即抵瓶颈，多则散逸 */
+  capNeed(p) { return Math.round(GameData.layerNeed(p.realmIdx, 3) * 1.3); },
   /** 增加修为并处理境界内进层；返回是否发生过进层 */
   addExp(p, amount, silent = false) {
     let leveled = false;
@@ -33,6 +37,7 @@ const Cultivate = {
       p.exp -= need;
       p.layer++;
       leveled = true;
+      p.seclStreak = 0; p.capNotified = false;
       if (!silent) {
         Log.add(`水到渠成！你的修为迈入 <b>${GameData.REALM_NAMES[p.realmIdx]}${GameData.LAYER_NAMES[p.layer]}</b>！`, 'realm');
         UI.announce(`突 境 · ${GameData.REALM_NAMES[p.realmIdx]}${GameData.LAYER_NAMES[p.layer]}`, 'gold');   // v4
@@ -42,10 +47,21 @@ const Cultivate = {
     }
     if (p.layer === 3) {
       const need = GameData.layerNeed(p.realmIdx, 3);
-      // v18：溢出修为保留，突破后自动计入
+      // v18：溢出修为保留，突破后自动计入；v22 3.7a：修为囤积软上限——圆满后无破境丹，多修亦散逸
       if (p.exp > need) {
         p.expOverflow = (p.expOverflow || 0) + (p.exp - need);
         p.exp = need;
+      }
+      const total = p.exp + (p.expOverflow || 0);
+      const cap = this.capNeed(p);
+      if (total > cap) {
+        const lost = total - cap;
+        p.expOverflow = Math.max(0, cap - p.exp);
+        if (!silent && !p.capNotified) {
+          p.capNotified = true;
+          Log.add(`你的修为已至 ${GameData.REALM_NAMES[p.realmIdx]} 圆满瓶颈，再无寸进——<span class="neg">散逸了 ${Utils.fmtNum(Math.round(lost))} 点修为</span>。须得一枚【破境丹·${GameData.REALM_NAMES[p.realmIdx + 1]}】引药开脉，方能破关。`, 'warn');
+          UI.toast('修为抵瓶颈——需破境丹方可破关');
+        }
       }
     }
     return leveled;
@@ -162,11 +178,14 @@ const Cultivate = {
     const cb = document.getElementById('seclude-until-level');
     if (cb && cb.checked) { await this.secludeLoop(); return; }
     if (!Bag.spendStones(cost)) { UI.toast('灵石不足，付不起洞府开销'); return; }
-    const gain = Math.round(this.baseGain(p) * 10 * 1.6 * this.gainMult() * this.secludeMul(p));   // v20 隆冬蛰伏
+    const gain = Math.round(this.baseGain(p) * 10 * 1.6 * this.gainMult() * this.secludeMul(p) * this.diminMul(p));   // v20 隆冬蛰伏 · v22 3.7a 递减
+    const bL = p.layer, bR = p.realmIdx;
     if (p.dao === 'array') DaoSys.gain(p, 10);   // v16 阵道：聚灵
     if (p.dao === 'demonic') DaoSys.gain(p, 20);   // v16 魔性：化功
-    Log.add(`${Utils.pick(GameData.FLAVOR.seclude)}（修为 <b>+${Utils.fmtNum(gain)}</b>，丹毒稍减）`, 'info');
+    const dimNote = (p.seclStreak || 0) > 0 ? `，久坐无进 · 效率 ×${this.diminMul(p)}` : '';
+    Log.add(`${Utils.pick(GameData.FLAVOR.seclude)}（修为 <b>+${Utils.fmtNum(gain)}</b>${dimNote}，丹毒稍减）`, 'info');
     this.addExp(p, gain);
+    p.seclStreak = (p.layer === bL && p.realmIdx === bR) ? Math.min(5, (p.seclStreak || 0) + 1) : 0;
     UI.float(`修为 +${Utils.fmtNum(gain)} · 丹毒 -12`);   // v21 行动浮字
     p.poison = Math.max(0, p.poison - 12);
     Time.add(30);
@@ -174,8 +193,10 @@ const Cultivate = {
     let advanced = false;
     if (p.layer === 3 && p.exp >= GameData.layerNeed(p.realmIdx, 3)) {
       await Utils.sleep(400);
-      await this.breakthrough(10);
-      advanced = true;   // 冲关 / 天劫自有一幕演出，不再另弹结算
+      advanced = await this.breakthrough(10);   // 冲关 / 天劫自有一幕演出，不再另弹结算
+      if (advanced === false && p.layer === 3) {
+        Log.add('破境之丹未备——此番闭关，止步于关前。', 'warn');
+      }
     }
     Game.afterAction();
     if (!advanced) this.settleReport({ rounds: 1, exp: gain, days: 30, advanced: 0, from: null, to: this.realmLabel(p) });   // v21 结算报告
@@ -215,21 +236,27 @@ const Cultivate = {
         Log.add('洞府灵石开销难以为继，你只得提前出关。', 'warn');
         break;
       }
-      const gain = Math.round(this.baseGain(p) * 10 * 1.6 * this.gainMult() * this.secludeMul(p));   // v20 隆冬蛰伏
+      const gain = Math.round(this.baseGain(p) * 10 * 1.6 * this.gainMult() * this.secludeMul(p) * this.diminMul(p));   // v20 隆冬蛰伏 · v22 3.7a 递减
       if (p.dao === 'array') DaoSys.gain(p, 10);   // v16 阵道：聚灵
       if (p.dao === 'demonic') DaoSys.gain(p, 20);   // v16 魔性：化功
-      Log.add(`${Utils.pick(GameData.FLAVOR.seclude)}（第${rounds}轮 · 修为 <b>+${Utils.fmtNum(gain)}</b>，丹毒稍减）`, 'info');
+      Log.add(`${Utils.pick(GameData.FLAVOR.seclude)}（第${rounds}轮 · 修为 <b>+${Utils.fmtNum(gain)}</b>${(p.seclStreak || 0) > 0 ? `，久坐无进 · 效率 ×${this.diminMul(p)}` : ''}，丹毒稍减）`, 'info');
       this.addExp(p, gain);
+      p.seclStreak = (p.layer === beforeLayer && p.realmIdx === beforeRealm) ? Math.min(5, (p.seclStreak || 0) + 1) : 0;
       rep.rounds++; rep.exp += gain; rep.days += 30;
       p.poison = Math.max(0, p.poison - 12);
       Time.add(30);
       if (p.dead || Game.player !== p) return;
       Game.afterAction();
-      // 圆满冲关（与单轮闭关同款逻辑）：天劫博弈中胜出即境界跃升
+      // 圆满冲关（与单轮闭关同款逻辑）：天劫博弈中胜出即境界跃升；v22 3.7a：无丹则止步出关
       if (p.layer === 3 && p.exp >= GameData.layerNeed(p.realmIdx, 3)) {
         await Utils.sleep(400);
-        await this.breakthrough(10);
+        const opened = await this.breakthrough(10);
         if (!p || p.dead || Game.player !== p) return;
+        if (!opened && p.layer === 3 && p.exp >= GameData.layerNeed(p.realmIdx, 3)) {
+          Log.add('破境之丹未备，闭关亦难再进——你出关筹谋。', 'warn');
+          UI.toast('破境丹未备，连续闭关中止');
+          break;
+        }
       }
       // 已至下一小境界 → 自动出关
       if (p.layer !== beforeLayer || p.realmIdx !== beforeRealm) {
@@ -258,16 +285,33 @@ const Cultivate = {
     if (p.rootWeak) chance *= 0.85;         // 根基虚浮：历劫难度+15%
     return Utils.clamp(chance, 5, 95);
   },
-  /** 大境界突破：练气→筑基为静修冲关（无天劫）；金丹劫起进入天劫三策博弈（小境界进层仍在 addExp 中自动结算） */
+  /** 大境界突破：练气→筑基为静修冲关（无天劫）；金丹劫起进入天劫三策博弈（小境界进层仍在 addExp 中自动结算）。
+   *  v22 3.7a 卡2：破境丹门——冲击任何大境界都须服下对应【破境丹】，无丹不成关；返回是否真正开冲。 */
   async breakthrough(bonus = 0) {
     const p = Game.player;
-    if (p.layer !== 3 || p.exp < GameData.layerNeed(p.realmIdx, 3)) return;
-    if (p.realmIdx >= 9) return;
+    if (p.layer !== 3 || p.exp < GameData.layerNeed(p.realmIdx, 3)) return false;
+    if (p.realmIdx >= 9) return false;
+    const pillId = 'pill_pj' + (p.realmIdx + 1);
+    const pill = GameData.ITEMS[pillId];
+    if (Bag.count(pillId) < 1) {
+      await UI.popup({
+        title: '关 阻 · 无 丹 不 成',
+        html: `你气机鼓荡至极，却总在最后一线上打转——<b>关未开，丹未备</b>。<br><br>
+          冲击【${GameData.REALM_NAMES[p.realmIdx + 1]}】之关，须一枚 <b>【${pill ? pill.name : '破境丹'}】</b> 引药开脉。<br>
+          <span style="color:var(--text-faint)">丹炉可炼（丹方已录）；坊市拍卖、师门馈赠、奇遇机缘，亦是来路。</span>`,
+        options: [{ text: '筹谋去了', value: true, primary: true }],
+      });
+      return false;
+    }
+    Bag.removeItem(pillId, 1);
+    Log.add(`你服下【${pill.name}】，药力化开，气机轰然贯通最后一层壁障——<b>冲关！</b>`, 'system');
+    p.capNotified = false;
     if (p.realmIdx + 1 < GameData.TRIB_START) {
       await this.quietBreakthrough(bonus);
-      return;
+      return true;
     }
     await Tribulation.run(bonus);
+    return true;
   },
 
   /** v9 筑基瓶颈：练气圆满冲筑基，水到渠成的静修冲关——无天劫，成算另 +15%，
@@ -279,7 +323,7 @@ const Cultivate = {
     await Utils.sleep(700);
     if (Utils.chance(chance)) {
       p.realmIdx = 1; p.layer = 0; p.exp = Math.min(Math.floor((p.expOverflow || 0) / 2), GameData.layerNeed(1, 0) - 1); p.insight = 0; p.expOverflow = 0;
-      p.breakStreak = 0;
+      p.breakStreak = 0; p.seclStreak = 0; p.capNotified = false;
       const st = Stat.compute(p);
       p.hp = st.maxHp; p.mp = st.maxMp;
       NpcSys.onPlayerRealmUp(p);

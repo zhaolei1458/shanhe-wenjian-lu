@@ -504,6 +504,11 @@ try {
       for (const k in pt) {
         if (!NESTED.includes(k)) pl[k] = pt[k];
       }
+      // v22 3.7a 破境丹门：种子若已是圆满待冲关状态，自动补一枚对应关卡丹（等价于测试玩家已备丹）
+      if (pl.layer === 3 && pl.realmIdx < 9) {
+        const pid = 'pill_pj' + (pl.realmIdx + 1);
+        pl.bag = Object.assign({}, pl.bag); pl.bag[pid] = (pl.bag[pid] || 0) + 1;
+      }
       localStorage.setItem('fanren_wd_3', JSON.stringify({ v: 1, player: pl, meta: { name: pl.name, realmText: '测试', day: 60, age: 16, ts: Date.now(), dead: false } }));
     }, patch);
     await clickSel(page, '[data-action="act-newgame"]');

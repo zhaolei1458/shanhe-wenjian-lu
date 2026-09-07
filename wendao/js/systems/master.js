@@ -226,9 +226,24 @@ const MasterSys = {
     const s = this.state(p, m.npcId);
     const stones = Math.round(80 * GameData.stoneEco(Math.max(1, s.realmIdx)));
     Bag.addStones(stones);
+    // v22 3.7a：师门馈赠——师命直接喂主线：五成几率另赐破境丹（冲下一大境界用）或当档药材
+    let bonusTxt = '';
+    if (Utils.chance(50)) {
+      const next = Utils.clamp(p.realmIdx + 1, 1, 9);
+      if (Utils.chance(55)) {
+        const pid = 'pill_pj' + next;
+        Bag.addItem(pid, 1);
+        bonusTxt = `，另赐【${GameData.ITEMS[pid].name}】×1`;
+      } else {
+        const pool = GameData.matsByTier(Utils.clamp(Math.ceil(next / 2), 1, 4));
+        const mat = pool.length ? Utils.pick(pool) : 'm_lingcao';
+        Bag.addItem(mat, 2);
+        bonusTxt = `，另赐【${GameData.ITEMS[mat].name}】×2`;
+      }
+    }
     m.bond = Utils.clamp(m.bond + 5, 0, 100);
     m.task = null;
-    Log.add(`复命！师父颔首：“办事牢靠。”（灵石 +${Utils.fmtNum(stones)}，敬师 +5）`, 'gain');
+    Log.add(`复命！师父颔首：“办事牢靠。”（灵石 +${Utils.fmtNum(stones)}，敬师 +5${bonusTxt}）`, 'gain');
     Game.afterAction();
   },
   /** 传功：拜师礼赠功法（敬师 60 + 境界到门槛） */
