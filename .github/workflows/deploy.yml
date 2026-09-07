@@ -20,17 +20,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - name: Install
-        run: npm ci
-      - name: Test
-        run: npm test
-      - name: Build
-        run: npm run build
+      # 3.2 起游戏整体在 wendao/（零依赖零构建工具）：拼接 50 模块为单文件 game.js
+      - name: Build wendao bundle
+        run: node wendao/scripts/build.mjs
+      - name: Assemble dist
+        run: |
+          mkdir -p dist
+          cp wendao/index.html wendao/game.js wendao/style.css dist/
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
